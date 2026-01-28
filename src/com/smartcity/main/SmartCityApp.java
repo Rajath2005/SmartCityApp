@@ -184,7 +184,8 @@ public class SmartCityApp {
 
             switch (choice) {
                 case 1:
-                    System.out.println("Loading city attractions...");
+                    // Display all city attractions
+                    viewAllPlaces();
                     break;
                 case 2:
                     System.out.println("Finding nearby services...");
@@ -200,5 +201,30 @@ public class SmartCityApp {
                     System.out.println("Invalid choice. Please try again.");
             }
         }
+    }
+
+    // Display all places in the city
+    private static void viewAllPlaces() {
+        // Check if places list is empty
+        if (places.isEmpty()) {
+            System.out.println("\n❌ No places available at the moment.");
+            return;
+        }
+
+        // Display header
+        System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
+        System.out.println("-".repeat(50));
+
+        // Loop through and display each place
+        for (int i = 0; i < places.size(); i++) {
+            Place place = places.get(i);
+            System.out.println("\n📍 Place " + (i + 1) + ":");
+            System.out.println("   Name: " + place.name);
+            System.out.println("   Category: " + place.category);
+            System.out.println("   Location: " + place.location);
+            System.out.println("   Description: " + place.description);
+        }
+
+        System.out.println("\n" + "-".repeat(50));
     }
 }
