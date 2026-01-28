@@ -2,14 +2,28 @@ package com.smartcity.main;
 
 import java.util.Scanner;
 import java.util.HashMap;
+import java.util.ArrayList;
 import com.smartcity.model.User;
+import com.smartcity.model.Place;
 
 public class SmartCityApp {
     // In-memory user store: key = username, value = User object
     private static HashMap<String, User> users = new HashMap<>();
 
+    // In-memory place store: list of city places
+    private static ArrayList<Place> places = new ArrayList<>();
+
     // Scanner object shared across methods
     private static Scanner scanner = new Scanner(System.in);
+
+    static {
+        // Initialize places with sample data
+        places.add(new Place(1, "Grand Hotel", "Hotel", "Downtown", "5-star luxury hotel in the heart of the city"));
+        places.add(new Place(2, "Pizza Palace", "Restaurant", "Main Street", "Italian restaurant with authentic cuisine"));
+        places.add(new Place(3, "City Museum", "Tourist Spot", "Cultural District", "Historical museum showcasing city heritage"));
+        places.add(new Place(4, "Central Park", "Park", "North Avenue", "Large green space for recreation and relaxation"));
+        places.add(new Place(5, "Tech Hub Cafe", "Cafe", "Business Zone", "Modern cafe popular with tech professionals"));
+    }
 
     public static void main(String[] args) {
         System.out.println("Smart City Guide Started Successfully");
