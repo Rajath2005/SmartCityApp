@@ -174,9 +174,10 @@ public class SmartCityApp {
         while (inUserMenu) {
             System.out.println("\n===== User Menu (User: " + username + ") =====");
             System.out.println("1. Explore city attractions");
-            System.out.println("2. View nearby services");
-            System.out.println("3. Check navigation");
-            System.out.println("4. Logout");
+            System.out.println("2. Search places");
+            System.out.println("3. View nearby services");
+            System.out.println("4. Check navigation");
+            System.out.println("5. Logout");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -188,12 +189,16 @@ public class SmartCityApp {
                     viewAllPlaces();
                     break;
                 case 2:
-                    System.out.println("Finding nearby services...");
+                    // Search for places
+                    searchPlacesMenu();
                     break;
                 case 3:
-                    System.out.println("Opening navigation...");
+                    System.out.println("Finding nearby services...");
                     break;
                 case 4:
+                    System.out.println("Opening navigation...");
+                    break;
+                case 5:
                     System.out.println("Logging out. Goodbye!");
                     inUserMenu = false;
                     break;
@@ -226,5 +231,100 @@ public class SmartCityApp {
         }
 
         System.out.println("\n" + "-".repeat(50));
+    }
+
+    // Display search menu with search options
+    private static void searchPlacesMenu() {
+        boolean inSearchMenu = true;
+
+        while (inSearchMenu) {
+            System.out.println("\n===== Search Places =====");
+            System.out.println("1. Search by category");
+            System.out.println("2. Search by location");
+            System.out.println("3. Back");
+            System.out.print("Enter your choice: ");
+
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Clear newline from input buffer
+
+            switch (choice) {
+                case 1:
+                    // Search places by category
+                    searchByCategory();
+                    break;
+                case 2:
+                    // Search places by location
+                    searchByLocation();
+                    break;
+                case 3:
+                    // Return to user menu
+                    inSearchMenu = false;
+                    break;
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+
+    // Search places by category (case-insensitive)
+    private static void searchByCategory() {
+        System.out.print("\nEnter category to search: ");
+        String searchCategory = scanner.nextLine().toLowerCase(); // Convert to lowercase for comparison
+
+        // List to track if any results found
+        boolean found = false;
+
+        System.out.println("\n🔍 Search Results for Category: " + searchCategory);
+        System.out.println("-".repeat(50));
+
+        // Loop through all places and find matches
+        for (Place place : places) {
+            // Case-insensitive comparison
+            if (place.category.toLowerCase().contains(searchCategory)) {
+                System.out.println("\n📍 " + place.name);
+                System.out.println("   Category: " + place.category);
+                System.out.println("   Location: " + place.location);
+                System.out.println("   Description: " + place.description);
+                found = true;
+            }
+        }
+
+        // Handle no results found
+        if (!found) {
+            System.out.println("❌ No places found in category: " + searchCategory);
+        }
+
+        System.out.println("-".repeat(50));
+    }
+
+    // Search places by location (case-insensitive)
+    private static void searchByLocation() {
+        System.out.print("\nEnter location to search: ");
+        String searchLocation = scanner.nextLine().toLowerCase(); // Convert to lowercase for comparison
+
+        // List to track if any results found
+        boolean found = false;
+
+        System.out.println("\n🔍 Search Results for Location: " + searchLocation);
+        System.out.println("-".repeat(50));
+
+        // Loop through all places and find matches
+        for (Place place : places) {
+            // Case-insensitive comparison
+            if (place.location.toLowerCase().contains(searchLocation)) {
+                System.out.println("\n📍 " + place.name);
+                System.out.println("   Category: " + place.category);
+                System.out.println("   Location: " + place.location);
+                System.out.println("   Description: " + place.description);
+                found = true;
+            }
+        }
+
+        // Handle no results found
+        if (!found) {
+            System.out.println("❌ No places found in location: " + searchLocation);
+        }
+
+        System.out.println("-".repeat(50));
     }
 }
