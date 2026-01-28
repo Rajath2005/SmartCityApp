@@ -152,7 +152,8 @@ public class SmartCityApp {
                     System.out.println("Viewing all registered users...");
                     break;
                 case 2:
-                    System.out.println("Managing city resources...");
+                    // Manage city resources
+                    manageCityResources();
                     break;
                 case 3:
                     System.out.println("Displaying system logs...");
@@ -326,5 +327,168 @@ public class SmartCityApp {
         }
 
         System.out.println("-".repeat(50));
+    }
+
+    // Manage city resources - admin submenu
+    private static void manageCityResources() {
+        boolean inResourceMenu = true;
+
+        while (inResourceMenu) {
+            System.out.println("\n===== Manage City Resources =====");
+            System.out.println("1. Add new place");
+            System.out.println("2. Update place");
+            System.out.println("3. Delete place");
+            System.out.println("4. Back");
+            System.out.print("Enter your choice: ");
+
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Clear newline from input buffer
+
+            switch (choice) {
+                case 1:
+                    // Add a new place to the system
+                    addNewPlace();
+                    break;
+                case 2:
+                    // Update an existing place
+                    updatePlace();
+                    break;
+                case 3:
+                    // Delete a place from the system
+                    deletePlace();
+                    break;
+                case 4:
+                    // Return to admin menu
+                    inResourceMenu = false;
+                    break;
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+
+    // Add a new place to the city
+    private static void addNewPlace() {
+        System.out.println("\n--- Add New Place ---");
+
+        // Get place ID
+        System.out.print("Enter place ID: ");
+        int id = scanner.nextInt();
+        scanner.nextLine(); // Clear newline from input buffer
+
+        // Get place name
+        System.out.print("Enter place name: ");
+        String name = scanner.nextLine();
+
+        // Get place category
+        System.out.print("Enter category (e.g., Hotel, Restaurant, Park): ");
+        String category = scanner.nextLine();
+
+        // Get place location
+        System.out.print("Enter location: ");
+        String location = scanner.nextLine();
+
+        // Get place description
+        System.out.print("Enter description: ");
+        String description = scanner.nextLine();
+
+        // Create new Place object
+        Place newPlace = new Place(id, name, category, location, description);
+
+        // Add place to ArrayList
+        places.add(newPlace);
+
+        // Print success message
+        System.out.println("✅ Success! Place '" + name + "' has been added to the city.");
+    }
+
+    // Update an existing place in the city
+    private static void updatePlace() {
+        System.out.println("\n--- Update Place ---");
+
+        // Ask admin for place ID to update
+        System.out.print("Enter place ID to update: ");
+        int placeId = scanner.nextInt();
+        scanner.nextLine(); // Clear newline from input buffer
+
+        // Find the place with matching ID
+        Place placeToUpdate = null;
+        for (Place place : places) {
+            if (place.id == placeId) {
+                placeToUpdate = place;
+                break;
+            }
+        }
+
+        // Check if place was found
+        if (placeToUpdate == null) {
+            System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+            return;
+        }
+
+        // Display current place details
+        System.out.println("\nCurrent details:");
+        System.out.println("Name: " + placeToUpdate.name);
+        System.out.println("Category: " + placeToUpdate.category);
+        System.out.println("Location: " + placeToUpdate.location);
+        System.out.println("Description: " + placeToUpdate.description);
+
+        // Get new place name
+        System.out.print("\nEnter new name (or press Enter to keep current): ");
+        String newName = scanner.nextLine();
+        if (!newName.isEmpty()) {
+            placeToUpdate.name = newName;
+        }
+
+        // Get new category
+        System.out.print("Enter new category (or press Enter to keep current): ");
+        String newCategory = scanner.nextLine();
+        if (!newCategory.isEmpty()) {
+            placeToUpdate.category = newCategory;
+        }
+
+        // Get new location
+        System.out.print("Enter new location (or press Enter to keep current): ");
+        String newLocation = scanner.nextLine();
+        if (!newLocation.isEmpty()) {
+            placeToUpdate.location = newLocation;
+        }
+
+        // Get new description
+        System.out.print("Enter new description (or press Enter to keep current): ");
+        String newDescription = scanner.nextLine();
+        if (!newDescription.isEmpty()) {
+            placeToUpdate.description = newDescription;
+        }
+
+        // Print success message
+        System.out.println("✅ Success! Place '" + placeToUpdate.name + "' has been updated.");
+    }
+
+    // Delete a place from the city
+    private static void deletePlace() {
+        System.out.println("\n--- Delete Place ---");
+
+        // Ask admin for place ID to delete
+        System.out.print("Enter place ID to delete: ");
+        int placeId = scanner.nextInt();
+        scanner.nextLine(); // Clear newline from input buffer
+
+        // Find and remove the place with matching ID
+        boolean placeFound = false;
+        for (int i = 0; i < places.size(); i++) {
+            if (places.get(i).id == placeId) {
+                String deletedPlaceName = places.get(i).name;
+                places.remove(i); // Remove place from ArrayList
+                System.out.println("✅ Success! Place '" + deletedPlaceName + "' has been deleted.");
+                placeFound = true;
+                break;
+            }
+        }
+
+        // Handle case when place ID is not found
+        if (!placeFound) {
+            System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+        }
     }
 }
