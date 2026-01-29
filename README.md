@@ -87,3 +87,5 @@ SmartCityGuide/
 
 ---
 *Developed as part of the Creative Coding Progress series.*
+=======
+# SmartCityApp
