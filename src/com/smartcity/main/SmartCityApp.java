@@ -1,29 +1,17 @@
 package com.smartcity.main;
 
 import java.util.Scanner;
-import java.util.HashMap;
-import java.util.ArrayList;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import com.smartcity.model.User;
 import com.smartcity.model.Place;
+import com.smartcity.db.DBConnection;
 
 public class SmartCityApp {
-    // In-memory user store: key = username, value = User object
-    private static HashMap<String, User> users = new HashMap<>();
-
-    // In-memory place store: list of city places
-    private static ArrayList<Place> places = new ArrayList<>();
-
     // Scanner object shared across methods
     private static Scanner scanner = new Scanner(System.in);
-
-    static {
-        // Initialize places with sample data
-        places.add(new Place(1, "Grand Hotel", "Hotel", "Downtown", "5-star luxury hotel in the heart of the city"));
-        places.add(new Place(2, "Pizza Palace", "Restaurant", "Main Street", "Italian restaurant with authentic cuisine"));
-        places.add(new Place(3, "City Museum", "Tourist Spot", "Cultural District", "Historical museum showcasing city heritage"));
-        places.add(new Place(4, "Central Park", "Park", "North Avenue", "Large green space for recreation and relaxation"));
-        places.add(new Place(5, "Tech Hub Cafe", "Cafe", "Business Zone", "Modern cafe popular with tech professionals"));
-    }
 
     public static void main(String[] args) {
         System.out.println("Smart City Guide Started Successfully");
@@ -67,68 +55,144 @@ public class SmartCityApp {
         System.out.print("Enter your choice: ");
     }
 
-    // Implement registration with in-memory storage
+    // Register new user directly to MySQL database
     private static void register() {
         System.out.println("\n--- Registration ---");
 
-        // Ask user for username
+        // Get username from user input
         System.out.print("Enter username: ");
         String username = scanner.nextLine();
 
-        // Check if username already exists
-        if (users.containsKey(username)) {
-            System.out.println("Error: Username already exists. Please choose a different username.");
+        // Validate username is not empty
+        if (username.isEmpty()) {
+            System.out.println("Error: Username cannot be empty.");
             return;
         }
 
-        // Ask user for password
-        System.out.print("Enter password: ");
-        String password = scanner.nextLine();
+        // SQL query to check if username already exists
+        String checkQuery = "SELECT id FROM users WHERE username = ?";
 
-        // Validate password is not empty
-        if (password.isEmpty()) {
-            System.out.println("Error: Password cannot be empty.");
-            return;
+        try {
+            // Get database connection
+            Connection connection = DBConnection.getConnection();
+
+            if (connection == null) {
+                System.out.println("❌ Failed to connect to database.");
+                return;
+            }
+
+            // Check if username already exists
+            PreparedStatement checkPstmt = connection.prepareStatement(checkQuery);
+            checkPstmt.setString(1, username);
+            ResultSet resultSet = checkPstmt.executeQuery();
+
+            if (resultSet.next()) {
+                System.out.println("Error: Username already exists. Please choose a different username.");
+                resultSet.close();
+                checkPstmt.close();
+                connection.close();
+                return;
+            }
+
+            resultSet.close();
+            checkPstmt.close();
+
+            // Get password from user input
+            System.out.print("Enter password: ");
+            String password = scanner.nextLine();
+
+            // Validate password is not empty
+            if (password.isEmpty()) {
+                System.out.println("Error: Password cannot be empty.");
+                connection.close();
+                return;
+            }
+
+            // SQL query to insert new user with default "USER" role
+            String insertQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
+
+            // Create prepared statement for insert
+            PreparedStatement insertPstmt = connection.prepareStatement(insertQuery);
+            insertPstmt.setString(1, username);
+            insertPstmt.setString(2, password);
+            insertPstmt.setString(3, "USER"); // Default role for new users
+
+            // Execute insert
+            int rowsAffected = insertPstmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("Success! User '" + username + "' registered successfully.");
+            } else {
+                System.out.println("Error: Failed to register user. Please try again.");
+            }
+
+            // Close resources
+            insertPstmt.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to register user.");
+            System.out.println("   Error message: " + e.getMessage());
         }
-
-        // Create new user and store in HashMap
-        User newUser = new User(username, password);
-        users.put(username, newUser);
-
-        System.out.println("Success! User '" + username + "' registered successfully.");
     }
 
-    // Implement login with username and password validation
+    // Login user by validating credentials from MySQL database
     private static void login() {
         System.out.println("\n--- Login ---");
 
-        // Ask user for username
+        // Get username from user input
         System.out.print("Enter username: ");
         String username = scanner.nextLine();
 
-        // Check if username exists in HashMap
-        if (!users.containsKey(username)) {
-            System.out.println("Error: Username not found. Please register first.");
-            return;
-        }
-
-        // Ask user for password
+        // Get password from user input
         System.out.print("Enter password: ");
         String password = scanner.nextLine();
 
-        // Get the user from HashMap and verify password
-        User user = users.get(username);
-        if (user.password.equals(password)) {
-            System.out.println("Success! Welcome back, " + username + "!");
+        // SQL query to fetch user by username and password
+        String query = "SELECT role FROM users WHERE username = ? AND password = ?";
 
-            // Check user role and show appropriate menu
-            if (user.role.equals("ADMIN")) {
-                showAdminMenu(username);
-            } else {
-                showUserMenu(username);
+        try {
+            // Get database connection
+            Connection connection = DBConnection.getConnection();
+
+            if (connection == null) {
+                System.out.println("❌ Failed to connect to database.");
+                return;
             }
-        } else {
-            System.out.println("Error: Incorrect password. Please try again.");
+
+            // Create prepared statement with parameter binding
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            pstmt.setString(1, username);
+            pstmt.setString(2, password);
+
+            // Execute query
+            ResultSet resultSet = pstmt.executeQuery();
+
+            // Check if user credentials match
+            if (resultSet.next()) {
+                // Get user role from database
+                String role = resultSet.getString("role");
+
+                System.out.println("Success! Welcome back, " + username + "!");
+
+                // Show appropriate menu based on user role
+                if (role.equals("ADMIN")) {
+                    showAdminMenu(username);
+                } else {
+                    showUserMenu(username);
+                }
+            } else {
+                System.out.println("Error: Username or password incorrect. Please try again.");
+            }
+
+            // Close resources
+            resultSet.close();
+            pstmt.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to login user.");
+            System.out.println("   Error message: " + e.getMessage());
         }
     }
 
@@ -209,29 +273,62 @@ public class SmartCityApp {
         }
     }
 
-    // Display all places in the city
+    // Display all places in the city from MySQL database
     private static void viewAllPlaces() {
-        // Check if places list is empty
-        if (places.isEmpty()) {
-            System.out.println("\n❌ No places available at the moment.");
-            return;
+        // SQL query to fetch all places
+        String query = "SELECT * FROM places";
+
+        try {
+            // Get database connection
+            Connection connection = DBConnection.getConnection();
+
+            if (connection == null) {
+                System.out.println("❌ Failed to connect to database.");
+                return;
+            }
+
+            // Create statement and execute query
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            ResultSet resultSet = pstmt.executeQuery();
+
+            // Display header
+            System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
+            System.out.println("-".repeat(50));
+
+            boolean hasResults = false;
+
+            // Loop through ResultSet and display each place
+            while (resultSet.next()) {
+                hasResults = true;
+                int id = resultSet.getInt("id");
+                String name = resultSet.getString("name");
+                String category = resultSet.getString("category");
+                String location = resultSet.getString("location");
+                String description = resultSet.getString("description");
+
+                System.out.println("\n📍 Place ID: " + id);
+                System.out.println("   Name: " + name);
+                System.out.println("   Category: " + category);
+                System.out.println("   Location: " + location);
+                System.out.println("   Description: " + description);
+            }
+
+            // Handle case when no places found
+            if (!hasResults) {
+                System.out.println("❌ No places available at the moment.");
+            }
+
+            System.out.println("\n" + "-".repeat(50));
+
+            // Close resources
+            resultSet.close();
+            pstmt.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch places from database.");
+            System.out.println("   Error message: " + e.getMessage());
         }
-
-        // Display header
-        System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
-        System.out.println("-".repeat(50));
-
-        // Loop through and display each place
-        for (int i = 0; i < places.size(); i++) {
-            Place place = places.get(i);
-            System.out.println("\n📍 Place " + (i + 1) + ":");
-            System.out.println("   Name: " + place.name);
-            System.out.println("   Category: " + place.category);
-            System.out.println("   Location: " + place.location);
-            System.out.println("   Description: " + place.description);
-        }
-
-        System.out.println("\n" + "-".repeat(50));
     }
 
     // Display search menu with search options
@@ -267,66 +364,124 @@ public class SmartCityApp {
         }
     }
 
-    // Search places by category (case-insensitive)
+    // Search places by category from MySQL database
     private static void searchByCategory() {
         System.out.print("\nEnter category to search: ");
-        String searchCategory = scanner.nextLine().toLowerCase(); // Convert to lowercase for comparison
+        String searchCategory = scanner.nextLine();
 
-        // List to track if any results found
-        boolean found = false;
+        // SQL query with LIKE for case-insensitive search
+        String query = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
 
-        System.out.println("\n🔍 Search Results for Category: " + searchCategory);
-        System.out.println("-".repeat(50));
+        try {
+            // Get database connection
+            Connection connection = DBConnection.getConnection();
 
-        // Loop through all places and find matches
-        for (Place place : places) {
-            // Case-insensitive comparison
-            if (place.category.toLowerCase().contains(searchCategory)) {
-                System.out.println("\n📍 " + place.name);
-                System.out.println("   Category: " + place.category);
-                System.out.println("   Location: " + place.location);
-                System.out.println("   Description: " + place.description);
-                found = true;
+            if (connection == null) {
+                System.out.println("❌ Failed to connect to database.");
+                return;
             }
-        }
 
-        // Handle no results found
-        if (!found) {
-            System.out.println("❌ No places found in category: " + searchCategory);
-        }
+            // Create prepared statement with parameter binding
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            pstmt.setString(1, "%" + searchCategory + "%"); // Add wildcards for partial matching
+            ResultSet resultSet = pstmt.executeQuery();
 
-        System.out.println("-".repeat(50));
+            // Display search results
+            System.out.println("\n🔍 Search Results for Category: " + searchCategory);
+            System.out.println("-".repeat(50));
+
+            boolean found = false;
+
+            // Loop through ResultSet and display matching places
+            while (resultSet.next()) {
+                found = true;
+                String name = resultSet.getString("name");
+                String category = resultSet.getString("category");
+                String location = resultSet.getString("location");
+                String description = resultSet.getString("description");
+
+                System.out.println("\n📍 " + name);
+                System.out.println("   Category: " + category);
+                System.out.println("   Location: " + location);
+                System.out.println("   Description: " + description);
+            }
+
+            // Handle no results found
+            if (!found) {
+                System.out.println("❌ No places found in category: " + searchCategory);
+            }
+
+            System.out.println("-".repeat(50));
+
+            // Close resources
+            resultSet.close();
+            pstmt.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to search places by category.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
     }
 
-    // Search places by location (case-insensitive)
+    // Search places by location from MySQL database
     private static void searchByLocation() {
         System.out.print("\nEnter location to search: ");
-        String searchLocation = scanner.nextLine().toLowerCase(); // Convert to lowercase for comparison
+        String searchLocation = scanner.nextLine();
 
-        // List to track if any results found
-        boolean found = false;
+        // SQL query with LIKE for case-insensitive search
+        String query = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
 
-        System.out.println("\n🔍 Search Results for Location: " + searchLocation);
-        System.out.println("-".repeat(50));
+        try {
+            // Get database connection
+            Connection connection = DBConnection.getConnection();
 
-        // Loop through all places and find matches
-        for (Place place : places) {
-            // Case-insensitive comparison
-            if (place.location.toLowerCase().contains(searchLocation)) {
-                System.out.println("\n📍 " + place.name);
-                System.out.println("   Category: " + place.category);
-                System.out.println("   Location: " + place.location);
-                System.out.println("   Description: " + place.description);
-                found = true;
+            if (connection == null) {
+                System.out.println("❌ Failed to connect to database.");
+                return;
             }
-        }
 
-        // Handle no results found
-        if (!found) {
-            System.out.println("❌ No places found in location: " + searchLocation);
-        }
+            // Create prepared statement with parameter binding
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            pstmt.setString(1, "%" + searchLocation + "%"); // Add wildcards for partial matching
+            ResultSet resultSet = pstmt.executeQuery();
 
-        System.out.println("-".repeat(50));
+            // Display search results
+            System.out.println("\n🔍 Search Results for Location: " + searchLocation);
+            System.out.println("-".repeat(50));
+
+            boolean found = false;
+
+            // Loop through ResultSet and display matching places
+            while (resultSet.next()) {
+                found = true;
+                String name = resultSet.getString("name");
+                String category = resultSet.getString("category");
+                String location = resultSet.getString("location");
+                String description = resultSet.getString("description");
+
+                System.out.println("\n📍 " + name);
+                System.out.println("   Category: " + category);
+                System.out.println("   Location: " + location);
+                System.out.println("   Description: " + description);
+            }
+
+            // Handle no results found
+            if (!found) {
+                System.out.println("❌ No places found in location: " + searchLocation);
+            }
+
+            System.out.println("-".repeat(50));
+
+            // Close resources
+            resultSet.close();
+            pstmt.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to search places by location.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
     }
 
     // Manage city resources - admin submenu
@@ -392,14 +547,43 @@ public class SmartCityApp {
         System.out.print("Enter description: ");
         String description = scanner.nextLine();
 
-        // Create new Place object
-        Place newPlace = new Place(id, name, category, location, description);
+        // SQL query to insert new place
+        String query = "INSERT INTO places (id, name, category, location, description) VALUES (?, ?, ?, ?, ?)";
 
-        // Add place to ArrayList
-        places.add(newPlace);
+        try {
+            // Get database connection
+            Connection connection = DBConnection.getConnection();
 
-        // Print success message
-        System.out.println("✅ Success! Place '" + name + "' has been added to the city.");
+            if (connection == null) {
+                System.out.println("❌ Failed to connect to database.");
+                return;
+            }
+
+            // Create prepared statement with parameter binding
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            pstmt.setInt(1, id);
+            pstmt.setString(2, name);
+            pstmt.setString(3, category);
+            pstmt.setString(4, location);
+            pstmt.setString(5, description);
+
+            // Execute insert
+            int rowsAffected = pstmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("✅ Success! Place '" + name + "' has been added to the city.");
+            } else {
+                System.out.println("❌ Error: Failed to add place. Please try again.");
+            }
+
+            // Close resources
+            pstmt.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to add new place to database.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
     }
 
     // Update an existing place in the city
@@ -411,58 +595,93 @@ public class SmartCityApp {
         int placeId = scanner.nextInt();
         scanner.nextLine(); // Clear newline from input buffer
 
-        // Find the place with matching ID
-        Place placeToUpdate = null;
-        for (Place place : places) {
-            if (place.id == placeId) {
-                placeToUpdate = place;
-                break;
+        // SQL query to fetch place by ID
+        String selectQuery = "SELECT * FROM places WHERE id = ?";
+        // SQL query to update place details
+        String updateQuery = "UPDATE places SET name = ?, category = ?, location = ?, description = ? WHERE id = ?";
+
+        try {
+            // Get database connection
+            Connection connection = DBConnection.getConnection();
+
+            if (connection == null) {
+                System.out.println("❌ Failed to connect to database.");
+                return;
             }
+
+            // Check if place exists
+            PreparedStatement selectPstmt = connection.prepareStatement(selectQuery);
+            selectPstmt.setInt(1, placeId);
+            ResultSet resultSet = selectPstmt.executeQuery();
+
+            // If place not found, show error and return
+            if (!resultSet.next()) {
+                System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+                return;
+            }
+
+            // Display current place details
+            System.out.println("\nCurrent details:");
+            System.out.println("Name: " + resultSet.getString("name"));
+            System.out.println("Category: " + resultSet.getString("category"));
+            System.out.println("Location: " + resultSet.getString("location"));
+            System.out.println("Description: " + resultSet.getString("description"));
+
+            // Get new place name
+            System.out.print("\nEnter new name (or press Enter to keep current): ");
+            String newName = scanner.nextLine();
+            if (!newName.isEmpty()) {
+                // Update name in database
+                PreparedStatement updatePstmt = connection.prepareStatement(updateQuery);
+                updatePstmt.setString(1, newName);
+                updatePstmt.setInt(5, placeId);
+                updatePstmt.executeUpdate();
+            }
+
+            // Get new category
+            System.out.print("Enter new category (or press Enter to keep current): ");
+            String newCategory = scanner.nextLine();
+            if (!newCategory.isEmpty()) {
+                // Update category in database
+                PreparedStatement updatePstmt = connection.prepareStatement(updateQuery);
+                updatePstmt.setString(2, newCategory);
+                updatePstmt.setInt(5, placeId);
+                updatePstmt.executeUpdate();
+            }
+
+            // Get new location
+            System.out.print("Enter new location (or press Enter to keep current): ");
+            String newLocation = scanner.nextLine();
+            if (!newLocation.isEmpty()) {
+                // Update location in database
+                PreparedStatement updatePstmt = connection.prepareStatement(updateQuery);
+                updatePstmt.setString(3, newLocation);
+                updatePstmt.setInt(5, placeId);
+                updatePstmt.executeUpdate();
+            }
+
+            // Get new description
+            System.out.print("Enter new description (or press Enter to keep current): ");
+            String newDescription = scanner.nextLine();
+            if (!newDescription.isEmpty()) {
+                // Update description in database
+                PreparedStatement updatePstmt = connection.prepareStatement(updateQuery);
+                updatePstmt.setString(4, newDescription);
+                updatePstmt.setInt(5, placeId);
+                updatePstmt.executeUpdate();
+            }
+
+            System.out.println("✅ Success! Place with ID " + placeId + " has been updated.");
+
+            // Close resources
+            resultSet.close();
+            selectPstmt.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to update place in database.");
+            System.out.println("   Error message: " + e.getMessage());
         }
-
-        // Check if place was found
-        if (placeToUpdate == null) {
-            System.out.println("❌ Error: Place with ID " + placeId + " not found.");
-            return;
-        }
-
-        // Display current place details
-        System.out.println("\nCurrent details:");
-        System.out.println("Name: " + placeToUpdate.name);
-        System.out.println("Category: " + placeToUpdate.category);
-        System.out.println("Location: " + placeToUpdate.location);
-        System.out.println("Description: " + placeToUpdate.description);
-
-        // Get new place name
-        System.out.print("\nEnter new name (or press Enter to keep current): ");
-        String newName = scanner.nextLine();
-        if (!newName.isEmpty()) {
-            placeToUpdate.name = newName;
-        }
-
-        // Get new category
-        System.out.print("Enter new category (or press Enter to keep current): ");
-        String newCategory = scanner.nextLine();
-        if (!newCategory.isEmpty()) {
-            placeToUpdate.category = newCategory;
-        }
-
-        // Get new location
-        System.out.print("Enter new location (or press Enter to keep current): ");
-        String newLocation = scanner.nextLine();
-        if (!newLocation.isEmpty()) {
-            placeToUpdate.location = newLocation;
-        }
-
-        // Get new description
-        System.out.print("Enter new description (or press Enter to keep current): ");
-        String newDescription = scanner.nextLine();
-        if (!newDescription.isEmpty()) {
-            placeToUpdate.description = newDescription;
-        }
-
-        // Print success message
-        System.out.println("✅ Success! Place '" + placeToUpdate.name + "' has been updated.");
     }
 
     // Delete a place from the city
@@ -474,21 +693,38 @@ public class SmartCityApp {
         int placeId = scanner.nextInt();
         scanner.nextLine(); // Clear newline from input buffer
 
-        // Find and remove the place with matching ID
-        boolean placeFound = false;
-        for (int i = 0; i < places.size(); i++) {
-            if (places.get(i).id == placeId) {
-                String deletedPlaceName = places.get(i).name;
-                places.remove(i); // Remove place from ArrayList
-                System.out.println("✅ Success! Place '" + deletedPlaceName + "' has been deleted.");
-                placeFound = true;
-                break;
-            }
-        }
+        // SQL query to delete place by ID
+        String query = "DELETE FROM places WHERE id = ?";
 
-        // Handle case when place ID is not found
-        if (!placeFound) {
-            System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+        try {
+            // Get database connection
+            Connection connection = DBConnection.getConnection();
+
+            if (connection == null) {
+                System.out.println("❌ Failed to connect to database.");
+                return;
+            }
+
+            // Create prepared statement with parameter binding
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            pstmt.setInt(1, placeId);
+
+            // Execute delete
+            int rowsAffected = pstmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("✅ Success! Place with ID " + placeId + " has been deleted.");
+            } else {
+                System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+            }
+
+            // Close resources
+            pstmt.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to delete place from database.");
+            System.out.println("   Error message: " + e.getMessage());
         }
     }
 }
