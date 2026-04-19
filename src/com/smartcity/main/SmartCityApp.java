@@ -551,7 +551,7 @@ public class SmartCityApp {
         // Get place category
         System.out.print("Enter category (e.g., Hotel, Restaurant, Park): ");
         String category = scanner.nextLine();
-		if (category == null || category.trim().isEmpty()) {
+		if (!isValidCategory(category)) {
 			System.out.println("❌ Error: Category cannot be empty.");
 			return;
 		}
@@ -567,6 +567,10 @@ public class SmartCityApp {
         // Get place description
         System.out.print("Enter description: ");
         String description = scanner.nextLine();
+		if (!isValidDescription(description)) {
+			System.out.println("❌ Error: Description cannot be empty.");
+			return;
+		}
 
         // SQL query to insert new place
         String query = "INSERT INTO places (id, name, category, location, description) VALUES (?, ?, ?, ?, ?)";
@@ -661,27 +665,29 @@ public class SmartCityApp {
 			System.out.print("Enter new description (or press Enter to keep current): ");
 			String newDescription = scanner.nextLine();
 
+			// Validate non-empty user-provided inputs before applying fallback
+			if (!newName.isEmpty() && !isValidPlaceName(newName)) {
+				System.out.println("❌ Error: Place name cannot be blank.");
+				return;
+			}
+			if (!newCategory.isEmpty() && !isValidCategory(newCategory)) {
+				System.out.println("❌ Error: Category cannot be blank.");
+				return;
+			}
+			if (!newLocation.isEmpty() && !isValidLocation(newLocation)) {
+				System.out.println("❌ Error: Location cannot be blank.");
+				return;
+			}
+			if (!newDescription.isEmpty() && !isValidDescription(newDescription)) {
+				System.out.println("❌ Error: Description cannot be blank.");
+				return;
+			}
+
 			// Use old values if input is empty
 			if (newName.isEmpty()) newName = currentName;
 			if (newCategory.isEmpty()) newCategory = currentCategory;
 			if (newLocation.isEmpty()) newLocation = currentLocation;
 			if (newDescription.isEmpty()) newDescription = currentDescription;
-
-			// 🔥 VALIDATION
-			if (newName == null || newName.trim().isEmpty()) {
-				System.out.println("❌ Error: Place name cannot be empty.");
-				return;
-			}
-
-			if (newLocation == null || newLocation.trim().isEmpty()) {
-				System.out.println("❌ Error: Location cannot be empty.");
-				return;
-			}
-
-			if (newCategory == null || newCategory.trim().isEmpty()) {
-				System.out.println("❌ Error: Category cannot be empty.");
-				return;
-			}
 
 			// Single correct update query
 			PreparedStatement updatePstmt = connection.prepareStatement(updateQuery);
@@ -759,7 +765,13 @@ public class SmartCityApp {
 	private static boolean isValidPlaceName(String name) {
 		return name != null && !name.trim().isEmpty();
 	}
+	private static boolean isValidCategory(String category) {
+		return category != null && !category.trim().isEmpty();
+	}
 	private static boolean isValidLocation(String location) {
 		return location != null && !location.trim().isEmpty();
+	}
+	private static boolean isValidDescription(String description) {
+		return description != null && !description.trim().isEmpty();
 	}
 }
