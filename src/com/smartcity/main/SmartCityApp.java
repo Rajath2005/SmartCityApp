@@ -9,10 +9,26 @@ import java.sql.SQLException;
 import com.smartcity.model.User;
 import com.smartcity.model.Place;
 import com.smartcity.db.DBConnection;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 public class SmartCityApp {
     // Scanner object shared across methods
     private static Scanner scanner = new Scanner(System.in);
+
+    // bcrypt encoder instance for password hashing and verification
+    private static BCryptPasswordEncoder encoder;
+
+    static {
+        try {
+            encoder = new BCryptPasswordEncoder();
+        }
+        catch (NoClassDefFoundError e) {
+            System.out.println("❌ Fatal: Missing commons-logging library.");
+            System.out.println("   Please add commons-logging JAR to your project.");
+            System.exit(1);
+        }
+    }
+
 
     public static void main(String[] args) {
         System.out.println("Smart City Guide Started Successfully");
@@ -70,6 +86,18 @@ public class SmartCityApp {
         return password.matches(regex);
     }
 
+    private static String passwordEncoder(String password)
+    {
+
+            return encoder.encode(password);
+    }
+
+    private static boolean passwordMatcher(String rawPassword, String encodedPassword)
+    {
+
+        return encoder.matches(rawPassword, encodedPassword);
+    }
+
     // Register new user directly to MySQL database with validation
     private static void register() {
         System.out.println("\n--- Registration ---");
@@ -96,58 +124,55 @@ public class SmartCityApp {
         String checkQuery = "SELECT id FROM users WHERE username = ?";
         String insertQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
 
-        try {
+        try(Connection connection = DBConnection.getConnection();
+            PreparedStatement checkPstmt = connection.prepareStatement(checkQuery);)
+        {
             // Get database connection
-            Connection connection = DBConnection.getConnection();
-
             if (connection == null) {
                 System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
             // Check if username already exists
-            PreparedStatement checkPstmt = connection.prepareStatement(checkQuery);
             checkPstmt.setString(1, username);
-            ResultSet resultSet = checkPstmt.executeQuery();
+            try (ResultSet resultSet = checkPstmt.executeQuery();) {
 
-            if (resultSet.next()) {
-                System.out.println("❌ Error: Username already exists. Please choose a different username.");
-                resultSet.close();
-                checkPstmt.close();
-                connection.close();
-                return;
+                if (resultSet.next()) {
+                    System.out.println("❌ Error: Username already exists. Please choose a different username.");
+                    return;
+                }
+                try (PreparedStatement insertPstmt = connection.prepareStatement(insertQuery);) {
+
+
+                    // Create prepared statement for insert
+                    insertPstmt.setString(1, username);
+                    insertPstmt.setString(2, passwordEncoder(password));// Store hashed password
+                    insertPstmt.setString(3, "USER"); // Default role for new users
+
+                    // Execute insert
+                    int rowsAffected = insertPstmt.executeUpdate();
+
+                    if (rowsAffected > 0) {
+                        System.out.println("✅ Success! User '" + username + "' registered successfully.");
+                    } else {
+                        System.out.println("❌ Error: Failed to register user. Please try again.");
+                    }
+                }
             }
-
-            resultSet.close();
-            checkPstmt.close();
-
-            // Create prepared statement for insert
-            PreparedStatement insertPstmt = connection.prepareStatement(insertQuery);
-            insertPstmt.setString(1, username);
-            insertPstmt.setString(2, password);
-            insertPstmt.setString(3, "USER"); // Default role for new users
-
-            // Execute insert
-            int rowsAffected = insertPstmt.executeUpdate();
-
-            if (rowsAffected > 0) {
-                System.out.println("✅ Success! User '" + username + "' registered successfully.");
-            } else {
-                System.out.println("❌ Error: Failed to register user. Please try again.");
-            }
-
-            // Close resources
-            insertPstmt.close();
-            connection.close();
-
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             System.out.println("❌ Error: Failed to register user.");
             System.out.println("   Error message: " + e.getMessage());
         }
+        catch (Exception e) {
+            System.out.println("❌ Unexpected error: " + e.getMessage());
+        }
+
     }
 
     // Login user by validating credentials from MySQL database
-    private static void login() {
+    private static void login()
+    {
         System.out.println("\n--- Login ---");
 
         // Get username from user input
@@ -158,52 +183,58 @@ public class SmartCityApp {
         System.out.print("Enter password: ");
         String password = scanner.nextLine();
 
-        // SQL query to fetch user by username and password
-        String query = "SELECT role FROM users WHERE username = ? AND password = ?";
+        // SQL query to fetch user by username
+        String query = "SELECT password,role FROM users WHERE username = ?";
 
-        try {
-            // Get database connection
-            Connection connection = DBConnection.getConnection();
-
+        try (// db conncetion and prepared statement with try-with-resources for automatic closing
+              Connection connection = DBConnection.getConnection();
+              PreparedStatement pstmt = connection.prepareStatement(query))
+        {
             if (connection == null) {
                 System.out.println("❌ Failed to connect to database.");
                 return;
             }
-
-            // Create prepared statement with parameter binding
-            PreparedStatement pstmt = connection.prepareStatement(query);
             pstmt.setString(1, username);
-            pstmt.setString(2, password);
 
-            // Execute query
-            ResultSet resultSet = pstmt.executeQuery();
 
-            // Check if user credentials match
-            if (resultSet.next()) {
-                // Get user role from database
-                String role = resultSet.getString("role");
+            try(// execute query and get result set with try-with-resources for automatic closing
+                    ResultSet resultSet = pstmt.executeQuery();) {
 
-                System.out.println("✅ Success! Welcome back, " + username + "!");
+                // Check if user credentials match
+                if (resultSet.next()) {
 
-                // Show appropriate menu based on user role
-                if (role.equals("ADMIN")) {
-                    showAdminMenu(username);
-                } else {
-                    showUserMenu(username);
+                    String storedHashedPassword = resultSet.getString("password");
+                    if (!passwordMatcher(password, storedHashedPassword)) {
+                        System.out.println("❌ Error: password incorrect. Please try again.");
+                        return;
+                    }
+                    // Get user role from database
+                    String role = resultSet.getString("role");
+
+                    System.out.println("✅ Success! Welcome back, " + username + "!");
+
+                    // Show appropriate menu based on user role
+                    if (role.equals("ADMIN")) {
+                        showAdminMenu(username);
+                    } else {
+                        showUserMenu(username);
+                    }
                 }
-            } else {
-                System.out.println("❌ Error: Username or password incorrect. Please try again.");
+                else
+                {
+                    System.out.println("❌ Error: Username or password incorrect. Please try again.");
+                }
             }
-
-            // Close resources
-            resultSet.close();
-            pstmt.close();
-            connection.close();
-
-        } catch (SQLException e) {
+        }
+        catch (SQLException e)
+        {
             System.out.println("❌ Error: Failed to login user.");
             System.out.println("   Error message: " + e.getMessage());
         }
+        catch (Exception e) {
+            System.out.println("❌ Unexpected error: " + e.getMessage());
+        }
+
     }
 
     // Display admin menu with admin-specific options
