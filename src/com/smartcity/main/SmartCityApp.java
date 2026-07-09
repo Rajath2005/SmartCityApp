@@ -1,5 +1,6 @@
 package com.smartcity.main;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.InputMismatchException;
 import java.util.Scanner;
@@ -23,7 +24,7 @@ import com.smartcity.db.DBConnection;
  */
 public class SmartCityApp {
     // Scanner object shared across methods
-    private static Scanner scanner = new Scanner(System.in);
+    private final static Scanner scanner = new Scanner(System.in);
 
     // SQL Query Constants
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
@@ -32,9 +33,9 @@ public class SmartCityApp {
     private static final String SELECT_ALL_PLACES_QUERY = "SELECT * FROM places";
     private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
     private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
-    private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description) VALUES (?, ?, ?, ?, ?)";
+    private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
     private static final String SELECT_PLACE_BY_ID_QUERY = "SELECT * FROM places WHERE id = ?";
-    private static final String UPDATE_PLACE_QUERY = "UPDATE places SET name = ?, category = ?, location = ?, description = ? WHERE id = ?";
+    private static final String UPDATE_PLACE_QUERY = "UPDATE places SET name = ?, category = ?, location = ?, description = ?, latitude = ?, longitude = ? WHERE id = ?";
     private static final String DELETE_PLACE_QUERY = "DELETE FROM places WHERE id = ?";
     private static final String SELECT_ALL_CREDENTIALS_QUERY = "SELECT id, password FROM users";
 
@@ -109,7 +110,7 @@ public class SmartCityApp {
     private static String hashPassword(String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(password.getBytes("UTF-8"));
+            byte[] hash = md.digest(password.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) {
                 sb.append(String.format("%02x", b));
@@ -379,12 +380,15 @@ public class SmartCityApp {
                     String category = resultSet.getString("category");
                     String location = resultSet.getString("location");
                     String description = resultSet.getString("description");
+                    double latitude = resultSet.getDouble("latitude");
+                    double longitude = resultSet.getDouble("longitude");
 
                     System.out.println("\n📍 Place ID: " + id);
                     System.out.println("   Name: " + name);
                     System.out.println("   Category: " + category);
                     System.out.println("   Location: " + location);
                     System.out.println("   Description: " + description);
+                    System.out.println("   Coordinates " + latitude + ", " + longitude);
                 }
 
                 // Handle case when no places found
@@ -462,11 +466,14 @@ public class SmartCityApp {
                         String category = resultSet.getString("category");
                         String location = resultSet.getString("location");
                         String description = resultSet.getString("description");
+                        double latitude = resultSet.getDouble("latitude");
+                        double longitude = resultSet.getDouble("longitude");
 
                         System.out.println("\n📍 " + name);
                         System.out.println("   Category: " + category);
                         System.out.println("   Location: " + location);
                         System.out.println("   Description: " + description);
+                        System.out.println("   Coordinates: " + latitude + " " + longitude);
                     }
 
                     // Handle no results found
@@ -512,11 +519,14 @@ public class SmartCityApp {
                         String category = resultSet.getString("category");
                         String location = resultSet.getString("location");
                         String description = resultSet.getString("description");
+                        double latitude = resultSet.getDouble("latitude");
+                        double longitude = resultSet.getDouble("longitude");
 
                         System.out.println("\n📍 " + name);
                         System.out.println("   Category: " + category);
                         System.out.println("   Location: " + location);
                         System.out.println("   Description: " + description);
+                        System.out.println("   Coordinates: " + latitude + ", " + longitude);
                     }
 
                     // Handle no results found
@@ -625,6 +635,31 @@ public class SmartCityApp {
         System.out.print("Enter description: ");
         String description = scanner.nextLine();
 
+        // Get place latitude
+        System.out.print("Enter place latitude: ");
+        double latitude;
+        try {
+            latitude = scanner.nextDouble();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid latitude. Please enter a valid number.");
+            scanner.nextLine(); // Clear newline from input buffer
+            return;
+        }
+
+        // Get place longitude
+        System.out.print("Enter place longitude: ");
+        double longitude;
+        try {
+            longitude = scanner.nextDouble();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid longitude. Please enter a valid number.");
+            scanner.nextLine(); // Clear newline from input buffer
+            return;
+        }
+
+
         try (Connection connection = DBConnection.getConnection()) {
             if (connection == null) {
                 System.out.println("❌ Failed to connect to database.");
@@ -637,6 +672,8 @@ public class SmartCityApp {
                 pstmt.setString(3, category);
                 pstmt.setString(4, location);
                 pstmt.setString(5, description);
+                pstmt.setDouble(6, latitude);
+                pstmt.setDouble(7, longitude);
 
                 int rowsAffected = pstmt.executeUpdate();
 
@@ -676,6 +713,7 @@ public class SmartCityApp {
 
             // Fetch existing place
             String currentName, currentCategory, currentLocation, currentDescription;
+            double currentLatitude, currentLongitude;
             try (PreparedStatement selectPstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
                 selectPstmt.setInt(1, placeId);
                 try (ResultSet rs = selectPstmt.executeQuery()) {
@@ -688,6 +726,8 @@ public class SmartCityApp {
                     currentCategory = rs.getString("category");
                     currentLocation = rs.getString("location");
                     currentDescription = rs.getString("description");
+                    currentLatitude = rs.getDouble("latitude");
+                    currentLongitude = rs.getDouble("longitude");
                 }
             }
 
@@ -696,6 +736,9 @@ public class SmartCityApp {
             System.out.println("Category: " + currentCategory);
             System.out.println("Location: " + currentLocation);
             System.out.println("Description: " + currentDescription);
+            System.out.println("Coordinates: " + currentLatitude + ", " + currentLongitude);
+
+            double newLatitude, newLongitude;
 
             // Take new inputs
             System.out.print("\nEnter new name (or press Enter to keep current): ");
@@ -710,6 +753,13 @@ public class SmartCityApp {
             System.out.print("Enter new description (or press Enter to keep current): ");
             String newDescription = scanner.nextLine();
 
+            System.out.print("Enter new latitude (or press Enter to keep current): ");
+            String newLatitudeString = scanner.nextLine();
+
+            System.out.print("Enter new longitude (or press Enter to keep current): ");
+            String newLongitudeString = scanner.nextLine();
+
+
             // Use old values if input is empty
             if (newName.isEmpty()) {
                 newName = currentName;
@@ -723,6 +773,9 @@ public class SmartCityApp {
             if (newDescription.isEmpty()) {
                 newDescription = currentDescription;
             }
+
+            newLatitude = currentLatitude;
+            newLongitude = currentLongitude;
 
             // 🔥 VALIDATION
             if (newName == null || newName.trim().isEmpty()) {
@@ -740,12 +793,26 @@ public class SmartCityApp {
                 return;
             }
 
+            try {
+                newLatitude = Double.parseDouble(newLatitudeString);
+            } catch (NumberFormatException e) {
+                System.out.println("❌ Error: Latitude number is not a valid number.");
+            }
+
+            try {
+                newLongitude = Double.parseDouble(newLongitudeString);
+            } catch (NumberFormatException e) {
+                System.out.println("❌ Error: Longitude number is not a valid number");
+            }
+
             try (PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PLACE_QUERY)) {
                 updatePstmt.setString(1, newName);
                 updatePstmt.setString(2, newCategory);
                 updatePstmt.setString(3, newLocation);
                 updatePstmt.setString(4, newDescription);
-                updatePstmt.setInt(5, placeId);
+                updatePstmt.setDouble(5, newLatitude);
+                updatePstmt.setDouble(6, newLongitude);
+                updatePstmt.setInt(7, placeId);
 
                 int rows = updatePstmt.executeUpdate();
 

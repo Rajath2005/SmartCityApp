@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS places (
     location VARCHAR(100) NOT NULL,
     description TEXT
 );
+-- Add Coordinate support
+ALTER TABLE places
+    ADD COLUMN latitude DOUBLE,
+    ADD COLUMN longitude DOUBLE;
 
 -- Insert sample admin account (Change password in production!)
 INSERT IGNORE INTO users (username, password, role) VALUES ('admin', 'Admin@123', 'ADMIN');
