@@ -696,7 +696,8 @@ public class SmartCityApp {
             System.out.println("Description: " + currentDescription);
             System.out.println("Coordinates: " + currentLatitude + ", " + currentLongitude);
 
-            double newLatitude, newLongitude;
+            double newLatitude = currentLatitude;
+            double newLongitude = currentLongitude;
 
             // Take new inputs
             System.out.print("\nEnter new name (or press Enter to keep current): ");
@@ -731,9 +732,12 @@ public class SmartCityApp {
             if (newDescription.isEmpty()) {
                 newDescription = currentDescription;
             }
-
-            newLatitude = currentLatitude;
-            newLongitude = currentLongitude;
+            if (newLatitudeString.isEmpty()) {
+                newLatitude = currentLatitude;
+            }
+            if (newLongitudeString.isEmpty()) {
+                newLongitude = currentLongitude;
+            }
 
             // 🔥 VALIDATION
             if (newName == null || newName.trim().isEmpty()) {
@@ -751,25 +755,22 @@ public class SmartCityApp {
                 return;
             }
 
-            if (newLatitudeString == null || newLatitudeString.trim().isEmpty()) {
-                System.out.println("❌ Error: Latitude cannot be empty.");
-                return;
+            if (!newLatitudeString.trim().isEmpty()) {
+                try {
+                    newLatitude = Double.parseDouble(newLatitudeString);
+                } catch (NumberFormatException e) {
+                    System.out.println("❌ Error: Latitude is not a valid number.");
+                    return;
+                }
             }
 
-            try {
-                newLatitude = Double.parseDouble(newLatitudeString);
-            } catch (NumberFormatException e) {
-                System.out.println("❌ Error: Latitude number is not a valid number.");
-            }
-
-            if (newLongitudeString == null || newLongitudeString.trim().isEmpty()) {
-                System.out.println("❌ Error: Longitude cannot be empty.");
-                return;
-            }
-            try {
-                newLongitude = Double.parseDouble(newLongitudeString);
-            } catch (NumberFormatException e) {
-                System.out.println("❌ Error: Longitude number is not a valid number");
+            if (!newLongitudeString.trim().isEmpty()) {
+                try {
+                    newLongitude = Double.parseDouble(newLongitudeString);
+                } catch (NumberFormatException e) {
+                    System.out.println("❌ Error: Longitude is not a valid number.");
+                    return;
+                }
             }
 
             try (PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PLACE_QUERY)) {
