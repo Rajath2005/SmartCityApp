@@ -355,6 +355,41 @@ public class SmartCityApp {
         }
     }
 
+    // Handles printing places from SQL ResultSet
+    private static void PlaceResultPrintout(ResultSet resultSet) {
+        boolean hasResults = false;
+        try {
+            // Loop through ResultSet and display each place
+            while (resultSet.next()) {
+                hasResults = true;
+                int id = resultSet.getInt("id");
+                String name = resultSet.getString("name");
+                String category = resultSet.getString("category");
+                String location = resultSet.getString("location");
+                String description = resultSet.getString("description");
+                double latitude = resultSet.getDouble("latitude");
+                double longitude = resultSet.getDouble("longitude");
+
+                System.out.println("\n📍 Place ID: " + id);
+                System.out.println("   Name: " + name);
+                System.out.println("   Category: " + category);
+                System.out.println("   Location: " + location);
+                System.out.println("   Description: " + description);
+                System.out.println("   Coordinates " + latitude + ", " + longitude);
+            }
+
+            // Handle case when no places found
+            if (!hasResults) {
+                System.out.println("❌ No places available at the moment.");
+            }
+
+            System.out.println("\n" + "-".repeat(50));
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch places from database.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
     // Display all places in the city from MySQL database
     private static void viewAllPlaces() {
         try (Connection connection = DBConnection.getConnection()) {
@@ -369,41 +404,14 @@ public class SmartCityApp {
                 // Display header
                 System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
                 System.out.println("-".repeat(50));
-
-                boolean hasResults = false;
-
-                // Loop through ResultSet and display each place
-                while (resultSet.next()) {
-                    hasResults = true;
-                    int id = resultSet.getInt("id");
-                    String name = resultSet.getString("name");
-                    String category = resultSet.getString("category");
-                    String location = resultSet.getString("location");
-                    String description = resultSet.getString("description");
-                    double latitude = resultSet.getDouble("latitude");
-                    double longitude = resultSet.getDouble("longitude");
-
-                    System.out.println("\n📍 Place ID: " + id);
-                    System.out.println("   Name: " + name);
-                    System.out.println("   Category: " + category);
-                    System.out.println("   Location: " + location);
-                    System.out.println("   Description: " + description);
-                    System.out.println("   Coordinates " + latitude + ", " + longitude);
-                }
-
-                // Handle case when no places found
-                if (!hasResults) {
-                    System.out.println("❌ No places available at the moment.");
-                }
-
-                System.out.println("\n" + "-".repeat(50));
+                PlaceResultPrintout(resultSet);
             }
 
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to fetch places from database.");
-            System.out.println("   Error message: " + e.getMessage());
+            } catch (SQLException e) {
+                System.out.println("❌ Error: Failed to fetch places from database.");
+                System.out.println("   Error message: " + e.getMessage());
+            }
         }
-    }
 
     // Display search menu with search options
     private static void searchPlacesMenu() {
@@ -456,32 +464,7 @@ public class SmartCityApp {
                     // Display search results
                     System.out.println("\n🔍 Search Results for Category: " + searchCategory);
                     System.out.println("-".repeat(50));
-
-                    boolean found = false;
-
-                    // Loop through ResultSet and display matching places
-                    while (resultSet.next()) {
-                        found = true;
-                        String name = resultSet.getString("name");
-                        String category = resultSet.getString("category");
-                        String location = resultSet.getString("location");
-                        String description = resultSet.getString("description");
-                        double latitude = resultSet.getDouble("latitude");
-                        double longitude = resultSet.getDouble("longitude");
-
-                        System.out.println("\n📍 " + name);
-                        System.out.println("   Category: " + category);
-                        System.out.println("   Location: " + location);
-                        System.out.println("   Description: " + description);
-                        System.out.println("   Coordinates: " + latitude + " " + longitude);
-                    }
-
-                    // Handle no results found
-                    if (!found) {
-                        System.out.println("❌ No places found in category: " + searchCategory);
-                    }
-
-                    System.out.println("-".repeat(50));
+                    PlaceResultPrintout(resultSet);
                 }
             }
 
@@ -509,32 +492,7 @@ public class SmartCityApp {
                     // Display search results
                     System.out.println("\n🔍 Search Results for Location: " + searchLocation);
                     System.out.println("-".repeat(50));
-
-                    boolean found = false;
-
-                    // Loop through ResultSet and display matching places
-                    while (resultSet.next()) {
-                        found = true;
-                        String name = resultSet.getString("name");
-                        String category = resultSet.getString("category");
-                        String location = resultSet.getString("location");
-                        String description = resultSet.getString("description");
-                        double latitude = resultSet.getDouble("latitude");
-                        double longitude = resultSet.getDouble("longitude");
-
-                        System.out.println("\n📍 " + name);
-                        System.out.println("   Category: " + category);
-                        System.out.println("   Location: " + location);
-                        System.out.println("   Description: " + description);
-                        System.out.println("   Coordinates: " + latitude + ", " + longitude);
-                    }
-
-                    // Handle no results found
-                    if (!found) {
-                        System.out.println("❌ No places found in location: " + searchLocation);
-                    }
-
-                    System.out.println("-".repeat(50));
+                    PlaceResultPrintout(resultSet);
                 }
             }
 
@@ -793,12 +751,21 @@ public class SmartCityApp {
                 return;
             }
 
+            if (newLatitudeString == null || newLatitudeString.trim().isEmpty()) {
+                System.out.println("❌ Error: Latitude cannot be empty.");
+                return;
+            }
+
             try {
                 newLatitude = Double.parseDouble(newLatitudeString);
             } catch (NumberFormatException e) {
                 System.out.println("❌ Error: Latitude number is not a valid number.");
             }
 
+            if (newLongitudeString == null || newLongitudeString.trim().isEmpty()) {
+                System.out.println("❌ Error: Longitude cannot be empty.");
+                return;
+            }
             try {
                 newLongitude = Double.parseDouble(newLongitudeString);
             } catch (NumberFormatException e) {
