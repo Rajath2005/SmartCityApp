@@ -246,14 +246,21 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/polachandu">
+                    <img src="https://avatars.githubusercontent.com/u/86178027?v=4" width="100;" alt="polachandu"/>
+                    <br />
+                    <sub><b>polachandu</b></sub>
+                </a>
+            </td>
+		</tr>
+		<tr>
+            <td align="center">
                 <a href="https://github.com/rajibul004">
                     <img src="https://avatars.githubusercontent.com/u/157000457?v=4" width="100;" alt="rajibul004"/>
                     <br />
                     <sub><b>Rajibul Mondal</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/JhansiOruganti-43">
                     <img src="https://avatars.githubusercontent.com/u/155613006?v=4" width="100;" alt="JhansiOruganti-43"/>
