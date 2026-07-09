@@ -225,6 +225,13 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/cordeirops">
+                    <img src="https://avatars.githubusercontent.com/u/13083210?v=4" width="100;" alt="cordeirops"/>
+                    <br />
+                    <sub><b>Pedro Sbaraini Cordeiro</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/shikha033">
                     <img src="https://avatars.githubusercontent.com/u/177534265?v=4" width="100;" alt="shikha033"/>
                     <br />
@@ -236,13 +243,6 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                     <img src="https://avatars.githubusercontent.com/u/196079073?v=4" width="100;" alt="sshrrutiiii"/>
                     <br />
                     <sub><b>Shruti Dixit</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/cordeirops">
-                    <img src="https://avatars.githubusercontent.com/u/13083210?v=4" width="100;" alt="cordeirops"/>
-                    <br />
-                    <sub><b>Pedro Sbaraini Cordeiro</b></sub>
                 </a>
             </td>
             <td align="center">
