@@ -1,5 +1,6 @@
 package com.smartcity.main;
 
+import java.security.MessageDigest;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 import java.sql.Connection;
@@ -35,9 +36,16 @@ public class SmartCityApp {
     private static final String SELECT_PLACE_BY_ID_QUERY = "SELECT * FROM places WHERE id = ?";
     private static final String UPDATE_PLACE_QUERY = "UPDATE places SET name = ?, category = ?, location = ?, description = ? WHERE id = ?";
     private static final String DELETE_PLACE_QUERY = "DELETE FROM places WHERE id = ?";
+    private static final String SELECT_ALL_CREDENTIALS_QUERY = "SELECT id, password FROM users";
+
+    private static final String UPDATE_PASSWORD_QUERY = "UPDATE users SET password = ? WHERE id = ?";
+
+    private static final String SHA256_HEX_PATTERN = "^[a-f0-9]{64}$";
 
     public static void main(String[] args) {
         System.out.println("Smart City Guide Started Successfully");
+
+        migrateExistingPlaintextPasswords();
 
         boolean isRunning = true;
 
@@ -98,6 +106,56 @@ public class SmartCityApp {
         return password.matches(regex);
     }
 
+    private static String hashPassword(String password) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(password.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to hash password", e);
+        }
+    }
+
+    // One-time startup migration: rehashes any legacy plaintext passwords to SHA-256
+    private static void migrateExistingPlaintextPasswords() {
+        Connection connection = DBConnection.getConnection();
+
+        if (connection == null) {
+            System.out.println("❌ Skipped password migration: failed to connect to database.");
+            return;
+        }
+
+        try (connection;
+             PreparedStatement selectPstmt = connection.prepareStatement(SELECT_ALL_CREDENTIALS_QUERY);
+             PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PASSWORD_QUERY);
+             ResultSet resultSet = selectPstmt.executeQuery()) {
+
+            int migratedCount = 0;
+
+            while (resultSet.next()) {
+                String storedPassword = resultSet.getString("password");
+
+                if (!storedPassword.matches(SHA256_HEX_PATTERN)) {
+                    updatePstmt.setString(1, hashPassword(storedPassword));
+                    updatePstmt.setInt(2, resultSet.getInt("id"));
+                    updatePstmt.executeUpdate();
+                    migratedCount++;
+                }
+            }
+
+            if (migratedCount > 0) {
+                System.out.println("Migrated " + migratedCount + " plaintext password(s) to SHA-256.");
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to migrate plaintext passwords.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
     // Register new user directly to MySQL database with validation
     private static void register() {
         System.out.println("\n--- Registration ---");
@@ -150,7 +208,7 @@ public class SmartCityApp {
             // Insert new user
             try (PreparedStatement insertPstmt = connection.prepareStatement(INSERT_USER_QUERY)) {
                 insertPstmt.setString(1, username);
-                insertPstmt.setString(2, password);
+                insertPstmt.setString(2, hashPassword(password));
                 insertPstmt.setString(3, "USER"); // Default role for new users
 
                 int rowsAffected = insertPstmt.executeUpdate();
@@ -189,7 +247,7 @@ public class SmartCityApp {
             // Create prepared statement with parameter binding
             try (PreparedStatement pstmt = connection.prepareStatement(LOGIN_QUERY)) {
                 pstmt.setString(1, username);
-                pstmt.setString(2, password);
+                pstmt.setString(2, hashPassword(password));
 
                 try (ResultSet resultSet = pstmt.executeQuery()) {
                     // Check if user credentials match
