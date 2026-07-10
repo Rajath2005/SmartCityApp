@@ -1,0 +1,265 @@
+/* ─── Design tokens ───────────────────────────────────────────────────── */
+:root {
+  --bg-0: #04090f;
+  --bg-1: #080f1c;
+  --bg-2: #0d1828;
+  --bg-3: #122033;
+  --bg-card: #0c1624;
+  --bg-card-hover: #101d2e;
+  --border: #1a2f48;
+  --border-bright: #234060;
+
+  --cyan: #00d4ff;
+  --cyan-dim: #00a8cc;
+  --cyan-glow: rgba(0, 212, 255, 0.15);
+  --cyan-glow-strong: rgba(0, 212, 255, 0.3);
+  --amber: #ffb547;
+  --amber-dim: #e09030;
+  --amber-glow: rgba(255, 181, 71, 0.15);
+  --green: #00f5a0;
+  --green-glow: rgba(0, 245, 160, 0.15);
+  --purple: #a78bfa;
+  --red: #f87171;
+
+  --text-1: #e8f0fc;
+  --text-2: #94a3b8;
+  --text-3: #4a6080;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  --shadow-glow-cyan: 0 0 24px var(--cyan-glow-strong);
+  --shadow-glow-amber: 0 0 24px rgba(255,181,71,.3);
+
+  --section-gap: 120px;
+  --container: 1160px;
+}
+
+/* ─── Reset ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-0);
+  color: var(--text-1);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+button { cursor: pointer; font-family: inherit; }
+ul, ol { list-style: none; }
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-1); }
+::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+/* ─── Layout ──────────────────────────────────────────────────────────── */
+.container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+section { padding: var(--section-gap) 0; }
+
+/* ─── Typography ──────────────────────────────────────────────────────── */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 16px;
+}
+.section-label::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 1px;
+  background: var(--cyan);
+}
+
+.section-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -.02em;
+  color: var(--text-1);
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  font-size: 17px;
+  color: var(--text-2);
+  line-height: 1.7;
+  max-width: 600px;
+}
+
+/* ─── Gradient text ───────────────────────────────────────────────────── */
+.grad-cyan {
+  background: linear-gradient(135deg, var(--cyan) 0%, #60e0ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.grad-amber {
+  background: linear-gradient(135deg, var(--amber) 0%, #ffd080 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Cards ───────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  transition: border-color .2s, background .2s, transform .2s, box-shadow .2s;
+}
+.card:hover {
+  border-color: var(--border-bright);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+.card.glow-cyan:hover {
+  border-color: var(--cyan-dim);
+  box-shadow: var(--shadow-card), var(--shadow-glow-cyan);
+}
+.card.glow-amber:hover {
+  border-color: var(--amber-dim);
+  box-shadow: var(--shadow-card), var(--shadow-glow-amber);
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  transition: all .2s;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--cyan);
+  color: var(--bg-0);
+}
+.btn-primary:hover {
+  background: #20ddff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px var(--cyan-glow-strong);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-1);
+  border: 1px solid var(--border-bright);
+}
+.btn-ghost:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: var(--cyan-glow);
+}
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+/* ─── Badges ──────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  border: 1px solid transparent;
+}
+.badge-cyan { background: var(--cyan-glow); color: var(--cyan); border-color: rgba(0,212,255,.25); }
+.badge-amber { background: var(--amber-glow); color: var(--amber); border-color: rgba(255,181,71,.25); }
+.badge-green { background: var(--green-glow); color: var(--green); border-color: rgba(0,245,160,.25); }
+.badge-purple { background: rgba(167,139,250,.12); color: var(--purple); border-color: rgba(167,139,250,.25); }
+
+/* ─── Code ────────────────────────────────────────────────────────────── */
+code {
+  font-family: var(--font-mono);
+  font-size: .875em;
+  background: var(--bg-3);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--cyan);
+}
+
+/* ─── Loading skeleton ────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-2) 25%, var(--bg-3) 50%, var(--bg-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Dividers ────────────────────────────────────────────────────────── */
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent);
+}
+
+/* ─── Grid city background ────────────────────────────────────────────── */
+.city-grid {
+  background-image:
+    linear-gradient(rgba(0, 212, 255, .03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, .03) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px var(--cyan-glow-strong); }
+  50%       { box-shadow: 0 0 20px var(--cyan-glow-strong), 0 0 40px var(--cyan-glow); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+.anim-fade-up { animation: fadeUp .6s ease both; }
+.anim-fade-in { animation: fadeIn .5s ease both; }
+
+/* ─── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  :root { --section-gap: 72px; }
+  .container { padding: 0 16px; }
+  .section-title { font-size: 26px; }
+}
