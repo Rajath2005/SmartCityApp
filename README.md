@@ -246,14 +246,21 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/davidhrabcak">
+                    <img src="https://avatars.githubusercontent.com/u/94175077?v=4" width="100;" alt="davidhrabcak"/>
+                    <br />
+                    <sub><b>David Hrabcak</b></sub>
+                </a>
+            </td>
+		</tr>
+		<tr>
+            <td align="center">
                 <a href="https://github.com/polachandu">
                     <img src="https://avatars.githubusercontent.com/u/86178027?v=4" width="100;" alt="polachandu"/>
                     <br />
                     <sub><b>polachandu</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/rajibul004">
                     <img src="https://avatars.githubusercontent.com/u/157000457?v=4" width="100;" alt="rajibul004"/>
