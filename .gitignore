@@ -38,6 +38,9 @@ bin/
 target/
 dependency-reduced-pom.xml
 
+### Node.js ###
+node_modules/
+
 ### Python ###
 __pycache__/
 *.pyc
