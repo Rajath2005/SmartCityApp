@@ -1,0 +1,243 @@
+.activity-scene {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-0);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ─── Left panel ──────────────────────────────────────────────────────── */
+.activity-left {
+  padding: 36px 40px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid rgba(255,255,255,0.04);
+  overflow-y: auto;
+}
+.activity-left::-webkit-scrollbar { width: 2px; }
+.activity-left::-webkit-scrollbar-thumb { background: var(--bg-3); }
+
+.activity-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-title {
+  font-size: clamp(26px, 3.5vw, 44px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text-1);
+}
+
+/* Contribution steps */
+.contrib-steps {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  position: relative;
+}
+
+.contrib-step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  position: relative;
+  padding-bottom: 0;
+}
+
+.contrib-step__num {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 900;
+  color: rgba(0,212,255,0.15);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 44px;
+}
+
+.contrib-step__body {
+  padding: 4px 0 20px;
+}
+
+.contrib-step__label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 4px;
+}
+
+.contrib-step__hint {
+  font-size: 12.5px;
+  color: var(--text-3);
+  line-height: 1.55;
+}
+
+.contrib-step__line {
+  position: absolute;
+  left: 20px;
+  top: 32px;
+  width: 1px;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(0,212,255,0.15), transparent);
+}
+
+/* CTA */
+.activity-cta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ─── Right panel ─────────────────────────────────────────────────────── */
+.activity-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Feed */
+.activity-feed {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 40px 20px 32px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.activity-feed__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.activity-feed__live {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.1em;
+}
+
+.activity-feed__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  flex: 1;
+}
+.activity-feed__list::-webkit-scrollbar { width: 2px; }
+.activity-feed__list::-webkit-scrollbar-thumb { background: var(--bg-3); }
+
+.feed-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.feed-item:hover { background: rgba(255,255,255,0.03); }
+
+.feed-item__num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cyan);
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 36px;
+}
+
+.feed-item__title {
+  font-size: 12.5px;
+  color: var(--text-2);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s;
+}
+.feed-item:hover .feed-item__title { color: var(--text-1); }
+
+.feed-item__age {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.feed-item--skeleton { pointer-events: none; }
+
+.skel {
+  background: linear-gradient(90deg, var(--bg-2) 25%, var(--bg-3) 50%, var(--bg-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  display: block;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Roadmap summary */
+.activity-roadmap {
+  padding: 20px 40px 16px 32px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+
+.roadmap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.roadmap-row__icon { font-size: 14px; flex-shrink: 0; }
+.roadmap-row__title {
+  font-size: 12.5px;
+  color: var(--text-2);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roadmap-row__status {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+/* Footer */
+.activity-footer {
+  padding: 14px 40px 14px 32px;
+  display: flex;
+  justify-content: space-between;
+  border-top: none;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .activity-scene { grid-template-columns: 1fr; overflow-y: auto; }
+  .activity-left { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); padding: 24px 20px; }
+  .activity-right { overflow: visible; }
+  .activity-feed { padding: 20px; min-height: 280px; }
+  .activity-roadmap { padding: 16px 20px; }
+  .activity-footer { padding: 12px 20px; flex-direction: column; gap: 4px; }
+}
