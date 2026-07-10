@@ -1,0 +1,184 @@
+.architecture { background: var(--bg-1); }
+
+.arch-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 40px 0 28px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  width: fit-content;
+}
+.arch-tab {
+  padding: 10px 24px;
+  border-radius: calc(var(--radius-md) - 2px);
+  font-size: 14px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  transition: all .2s;
+}
+.arch-tab--active {
+  background: var(--bg-card);
+  color: var(--text-1);
+  box-shadow: var(--shadow-card);
+}
+
+/* Java diagram */
+.arch-java { padding: 40px; }
+.arch-java__desc { margin-bottom: 32px; }
+.arch-java__desc h3 { font-size: 20px; font-weight: 700; color: var(--text-1); margin-bottom: 10px; }
+.arch-java__desc p { font-size: 15px; color: var(--text-2); line-height: 1.7; }
+
+.java-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 36px;
+  font-family: var(--font-mono);
+}
+
+.java-layer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 28px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid;
+  min-width: 260px;
+  text-align: center;
+}
+.java-layer span { font-size: 20px; line-height: 1; }
+.java-layer small { font-size: 11px; font-weight: 400; opacity: .7; margin-top: 2px; }
+
+.java-layer--input { background: rgba(0,212,255,.06); border-color: rgba(0,212,255,.25); color: var(--cyan); }
+.java-layer--core  { background: rgba(255,181,71,.06); border-color: rgba(255,181,71,.25); color: var(--amber); }
+.java-layer--model { background: rgba(167,139,250,.06); border-color: rgba(167,139,250,.25); color: var(--purple); min-width: 140px; padding: 10px 16px; }
+.java-layer--infra { background: rgba(0,245,160,.06); border-color: rgba(0,245,160,.25); color: var(--green); min-width: 180px; }
+.java-layer--storage { background: rgba(68,121,161,.12); border-color: rgba(68,121,161,.4); color: #6baed6; min-width: 180px; }
+
+.java-diagram__arrow {
+  font-size: 20px;
+  color: var(--text-3);
+  line-height: 1;
+  padding: 4px 0;
+}
+
+.java-diagram__split {
+  display: flex;
+  gap: 48px;
+  align-items: flex-start;
+}
+.java-diagram__branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* File list */
+.arch-java__files {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+.arch-file {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+.arch-file__icon { font-size: 22px; flex-shrink: 0; }
+.arch-file__name { font-size: 13px; color: var(--cyan); }
+.arch-file__size { font-size: 11px; color: var(--text-3); margin-left: 8px; }
+.arch-file__role { font-size: 12px; color: var(--text-2); margin-top: 4px; line-height: 1.4; }
+
+/* AI diagram */
+.arch-ai { padding: 40px; }
+.arch-ai__desc { margin-bottom: 28px; }
+.arch-ai__desc h3 { font-size: 20px; font-weight: 700; color: var(--text-1); margin-bottom: 10px; }
+.arch-ai__desc p { font-size: 15px; color: var(--text-2); line-height: 1.7; }
+
+.arch-ai__diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.arch-ai__layer {
+  background: rgba(255,255,255,.02);
+  border: 1px solid color-mix(in srgb, var(--layer-color) 20%, transparent);
+  border-left: 3px solid var(--layer-color);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  position: relative;
+}
+
+.arch-ai__layer-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.arch-ai__layer-icon { font-size: 18px; }
+.arch-ai__layer-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--layer-color);
+  flex: 1;
+}
+.arch-ai__layer-arrow {
+  font-size: 16px;
+  color: var(--text-3);
+}
+
+.arch-ai__layer-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.arch-ai__layer-item {
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  background: var(--bg-2);
+  border-radius: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+}
+
+.arch-ai__principle {
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.arch-ai__principle-rule {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--bg-2);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+}
+.arch-ai__principle-rule span { font-size: 22px; flex-shrink: 0; }
+.arch-ai__principle-rule strong { font-size: 14px; color: var(--text-1); display: block; margin-bottom: 6px; }
+.arch-ai__principle-rule p { font-size: 12px; font-family: var(--font-mono); color: var(--cyan); line-height: 1.6; }
+
+@media (max-width: 768px) {
+  .arch-java__files { grid-template-columns: 1fr; }
+  .java-diagram__split { flex-direction: column; gap: 0; align-items: center; }
+  .arch-java, .arch-ai { padding: 24px; }
+}

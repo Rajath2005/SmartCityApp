@@ -1,0 +1,140 @@
+The current implementation is functionally correct but visually looks like an AI-generated landing page.
+
+I DO NOT want another template.
+
+I want this website to feel like it was designed by an experienced product designer from Vercel, Linear, GitHub, Stripe, Apple or Figma.
+
+Before changing anything, critique the current UI honestly.
+
+Identify:
+- repetitive layouts
+- generic sections
+- weak typography
+- poor spacing
+- visual hierarchy issues
+- accessibility problems
+- interaction problems
+- anything that makes it look AI-generated
+
+Then redesign the entire experience.
+
+Do NOT simply change colors.
+
+Re-think the experience from first principles.
+
+Use modern product design principles.
+
+The website should feel premium, editorial, immersive and memorable.
+
+Avoid:
+- giant centered headings everywhere
+- repeated feature cards
+- template grids
+- generic glassmorphism
+- copied SaaS landing page sections
+- overuse of borders
+- overuse of shadows
+
+Instead create strong hierarchy.
+
+Use asymmetric layouts.
+
+Alternate section compositions.
+
+Mix large typography with smaller supporting content.
+
+Introduce storytelling.
+
+Every section should feel different.
+
+Use whitespace intentionally.
+
+Animations should communicate meaning, not exist for decoration.
+
+Create delightful micro-interactions.
+
+Navigation should feel premium.
+
+Cards should have different sizes depending on importance.
+
+Build visual rhythm across the page.
+
+Think like Apple's website rather than a Tailwind template.
+
+I want visitors to explore the page rather than scroll through identical sections.
+
+Do not be afraid to completely redesign sections.
+
+Quality is more important than speed.
+
+Use modern motion design.
+
+Use Framer Motion extensively.
+
+Create beautiful transitions.
+
+Create subtle parallax where appropriate.
+
+Animate on scroll.
+
+Add page reveal animations.
+
+Use staggered entrance animations.
+
+Build premium hover interactions.
+
+Use smooth easing.
+
+Make every animation intentional.
+
+Improve typography dramatically.
+
+Use multiple font weights.
+
+Use large display typography.
+
+Create better text hierarchy.
+
+Improve readability.
+
+Make spacing feel intentional.
+
+Use modern layout systems.
+
+Avoid perfect symmetry everywhere.
+
+Some sections should break the grid.
+
+Add visual depth.
+
+Introduce custom illustrations using CSS and SVG where appropriate.
+
+Use SVG lines, glowing nodes, architecture maps, timelines, connection graphs and animated paths.
+
+The Architecture section should become the visual centerpiece of the website.
+
+Instead of static boxes, build an interactive architecture explorer.
+
+The Contribution section should become a journey.
+
+Instead of cards, create a contributor roadmap.
+
+The AI Maintainer section should feel like observing an AI brain operating.
+
+Animate event flow from GitHub -> Rules -> AI -> Review -> PR.
+
+The homepage should feel alive.
+
+Every section should have its own identity.
+
+Every component should feel handcrafted.
+
+Refactor existing components rather than replacing everything blindly.
+
+Keep the code clean and reusable.
+
+Do not rush.
+
+Continuously critique your own design decisions while implementing.
+
+The goal is for this project to look portfolio-quality and indistinguishable from a professionally designed product website.
