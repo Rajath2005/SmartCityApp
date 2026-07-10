@@ -22,50 +22,53 @@ function Counter({ to, loading }) {
 }
 
 const BOOT_LINES = [
-  '> Initializing SmartCity OS...',
-  '> Connecting to GitHub API...',
-  '> Loading repository data...',
-  '> Mounting contributor database...',
-  '> All systems operational.',
+  { text: '> Initializing SmartCity OS v1.0.0…', color: 'var(--cyan)' },
+  { text: '> Connecting to GitHub API…',          color: 'var(--text-2)' },
+  { text: '> Loading repository metadata…',       color: 'var(--text-2)' },
+  { text: '> Mounting contributor database…',     color: 'var(--text-2)' },
+  { text: '> Verifying AI Maintainer module…',    color: 'var(--text-2)' },
+  { text: '> All systems operational.',           color: 'var(--green)'  },
 ]
 
 function BootSequence({ onDone }) {
   const [lines, setLines] = useState([])
-  const started = useRef(false)
 
+  // No started-ref guard: let StrictMode double-invoke work naturally.
+  // The state guard (prev.length !== i) keeps lines idempotent across remounts.
   useEffect(() => {
-    if (started.current) return
-    started.current = true
     let i = 0
     let doneTimer
     const id = setInterval(() => {
       setLines(prev => {
-        if (prev.length > i) return prev          // StrictMode guard
+        if (prev.length !== i) return prev   // idempotency guard
         return [...prev, BOOT_LINES[i]]
       })
       i++
       if (i >= BOOT_LINES.length) {
         clearInterval(id)
-        doneTimer = setTimeout(onDone, 400)
+        doneTimer = setTimeout(onDone, 600)
       }
-    }, 300)
+    }, 280)
     return () => { clearInterval(id); clearTimeout(doneTimer) }
   }, [onDone])
 
   return (
-    <div className="status-boot">
-      {lines.map((line, i) => (
+    <div className="term-body">
+      {lines.map((line, idx) => (
         <motion.div
-          key={i}
-          className="status-boot__line"
-          initial={{ opacity: 0, x: -8 }}
+          key={idx}
+          className="term-line"
+          style={{ color: line.color }}
+          initial={{ opacity: 0, x: -6 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: 0.2 }}
         >
-          {line}
+          {line.text}
         </motion.div>
       ))}
-      <span className="status-boot__cursor" />
+      {lines.length < BOOT_LINES.length && (
+        <span className="term-cursor" />
+      )}
     </div>
   )
 }
@@ -75,12 +78,11 @@ export default function StatusScene({ stats, contributors, loading }) {
 
   return (
     <div className="status-scene scanlines">
-      {/* Background ring */}
       <div className="status-bg-ring" />
       <div className="status-bg-glow" />
 
       <div className="status-inner">
-        {/* Left: headline */}
+        {/* ── Left: headline ── */}
         <div className="status-left">
           <motion.div
             className="label-mono"
@@ -119,7 +121,7 @@ export default function StatusScene({ stats, contributors, loading }) {
             transition={{ delay: 0.7, duration: 0.6 }}
           >
             <a href={REPO.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
               View Repository
             </a>
             <a href={REPO.issues_url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
@@ -128,14 +130,26 @@ export default function StatusScene({ stats, contributors, loading }) {
           </motion.div>
         </div>
 
-        {/* Right: system panel */}
+        {/* ── Right: terminal panel ── */}
         <motion.div
           className="status-panel"
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* Boot sequence or stats */}
+          {/* Terminal chrome — always visible */}
+          <div className="term-chrome">
+            <div className="term-chrome__dots">
+              <span className="dot dot--red"   />
+              <span className="dot dot--amber" />
+              <span className="dot dot--green" />
+            </div>
+            <span className="term-chrome__title label-mono">
+              {booted ? 'smartcity-os — system status' : 'smartcity-os — boot.sh'}
+            </span>
+          </div>
+
+          {/* Terminal body */}
           {!booted ? (
             <BootSequence onDone={() => setBooted(true)} />
           ) : (
@@ -149,11 +163,11 @@ export default function StatusScene({ stats, contributors, loading }) {
 
               <div className="status-stat-grid">
                 {[
-                  { key: 'stars', label: 'Stars', value: stats?.stars, color: 'var(--amber)', icon: '★' },
-                  { key: 'forks', label: 'Forks', value: stats?.forks, color: 'var(--cyan)', icon: '⑂' },
-                  { key: 'issues', label: 'Open Issues', value: stats?.open_issues, color: 'var(--violet)', icon: '◎' },
-                  { key: 'contributors', label: 'Contributors', value: contributors?.length || stats?.subscribers_count, color: 'var(--green)', icon: '✦' },
-                ].map((s) => (
+                  { key: 'stars',        label: 'Stars',        value: stats?.stars,                                      color: 'var(--amber)',  icon: '★' },
+                  { key: 'forks',        label: 'Forks',        value: stats?.forks,                                      color: 'var(--cyan)',   icon: '⑂' },
+                  { key: 'issues',       label: 'Open Issues',  value: stats?.open_issues,                                color: 'var(--violet)', icon: '◎' },
+                  { key: 'contributors', label: 'Contributors', value: contributors?.length || stats?.subscribers_count,  color: 'var(--green)',  icon: '✦' },
+                ].map(s => (
                   <div key={s.key} className="status-stat-cell" style={{ '--accent': s.color }}>
                     <div className="status-stat-cell__icon">{s.icon}</div>
                     <div className="status-stat-cell__value">
@@ -164,16 +178,15 @@ export default function StatusScene({ stats, contributors, loading }) {
                 ))}
               </div>
 
-              {/* System status rows */}
               <div className="status-sys-rows">
                 <div className="label-mono" style={{ marginBottom: 12 }}>SUBSYSTEM STATUS</div>
                 {[
-                  { name: 'GitHub API',      ok: true  },
-                  { name: 'MySQL 8.4',       ok: true  },
-                  { name: 'AI Maintainer',   ok: true  },
-                  { name: 'Java CLI v1.0',   ok: true  },
-                  { name: 'GitHub Actions',  ok: true  },
-                ].map((sys) => (
+                  { name: 'GitHub API',     ok: true  },
+                  { name: 'MySQL 8.4',      ok: true  },
+                  { name: 'AI Maintainer',  ok: true  },
+                  { name: 'Java CLI v1.0',  ok: true  },
+                  { name: 'GitHub Actions', ok: true  },
+                ].map(sys => (
                   <div key={sys.name} className="status-sys-row">
                     <span className="status-sys-row__name">{sys.name}</span>
                     <span className={`status-sys-row__dot ${sys.ok ? 'ok' : 'err'}`} />
