@@ -38,41 +38,51 @@ export function useGitHub() {
     let cancelled = false
 
     async function fetchAll() {
-      try {
-        const [repoData, contributorsData, issuesData] = await Promise.all([
-          ghFetch(BASE),
-          ghFetch(`${BASE}/contributors?per_page=20`),
-          ghFetch(`${BASE}/issues?state=open&per_page=50&direction=asc`),
-        ])
+      const [repoResult, contributorsResult, issuesResult] = await Promise.allSettled([
+        ghFetch(BASE),
+        ghFetch(`${BASE}/contributors?per_page=20`),
+        ghFetch(`${BASE}/issues?state=open&per_page=50&direction=asc`),
+      ])
 
-        if (cancelled) return
+      if (cancelled) return
 
+      // Repo stats — fall back independently
+      if (repoResult.status === 'fulfilled') {
+        const d = repoResult.value
         setStats({
-          stars: repoData.stargazers_count,
-          forks: repoData.forks_count,
-          open_issues: repoData.open_issues_count,
-          watchers: repoData.watchers_count,
+          stars: d.stargazers_count,
+          forks: d.forks_count,
+          open_issues: d.open_issues_count,
+          watchers: d.watchers_count,
         })
+      } else {
+        console.warn('GitHub repo fetch failed, using fallback stats:', repoResult.reason?.message)
+        setStats(FALLBACK.stats)
+        setError(repoResult.reason?.message)
+      }
 
-        // Filter out bots
-        const humans = contributorsData.filter(
+      // Contributors — fall back independently
+      if (contributorsResult.status === 'fulfilled') {
+        const humans = contributorsResult.value.filter(
           (c) => !c.login.includes('[bot]') && !c.login.includes('Copilot')
         )
         setContributors(humans)
-
-        // Filter out PRs (they appear in issues endpoint)
-        const actualIssues = issuesData.filter((i) => !i.pull_request)
-        setIssues(actualIssues)
-      } catch (err) {
-        if (cancelled) return
-        console.warn('GitHub API unavailable, using fallback data:', err.message)
-        setError(err.message)
-        setStats(FALLBACK.stats)
+      } else {
+        console.warn('GitHub contributors fetch failed, using fallback:', contributorsResult.reason?.message)
         setContributors(FALLBACK.contributors)
-        setIssues(FALLBACK.issues)
-      } finally {
-        if (!cancelled) setLoading(false)
       }
+
+      // Issues — fall back independently
+      if (issuesResult.status === 'fulfilled') {
+        // Filter out PRs (they appear in issues endpoint)
+        const actualIssues = issuesResult.value.filter((i) => !i.pull_request)
+        setIssues(actualIssues)
+      } else {
+        console.warn('GitHub issues fetch failed, using fallback:', issuesResult.reason?.message)
+        setIssues(FALLBACK.issues)
+      }
+
+      if (!cancelled) setLoading(false)
     }
 
     fetchAll()

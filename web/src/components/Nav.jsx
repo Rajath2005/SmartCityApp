@@ -29,7 +29,12 @@ export default function Nav() {
           <span className="nav__logo-text">SmartCity<span>Hub</span></span>
         </a>
 
-        <ul className={`nav__links ${menuOpen ? 'nav__links--open' : ''}`}>
+        <ul
+          id="nav-menu"
+          className={`nav__links ${menuOpen ? 'nav__links--open' : ''}`}
+          role="navigation"
+          aria-label="Main navigation"
+        >
           {LINKS.map(({ href, label }) => (
             <li key={href}>
               <a
@@ -58,7 +63,9 @@ export default function Nav() {
           <button
             className="nav__burger"
             onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
+            aria-label="Toggle navigation menu"
+            aria-expanded={menuOpen}
+            aria-controls="nav-menu"
           >
             <span /><span /><span />
           </button>

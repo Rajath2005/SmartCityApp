@@ -1,63 +1,61 @@
-# Smart City Guide
+# SmartCity Hub — Contributor Portal
 
-A console-based Java CLI application that lets users browse, search, and navigate city attractions. Admins can add, update, and delete places from a MySQL database.
-
-## Stack
-
-- **Language:** Java 21 (OpenJDK)
-- **Build:** Maven (produces `target/app.jar`)
-- **Database:** MySQL 8.4 (runs locally inside the Replit container)
-- **Auth:** SHA-256 password hashing
+A React web application (on the `feature/web-dashboard` branch) serving as the open-source contributor portal for [SmartCityApp](https://github.com/Rajath2005/SmartCityApp). It documents the project, displays live GitHub data, and helps contributors find and claim issues.
 
 ## How to run
 
-The workflow `Start application` handles everything:
+The workflow `Start application` runs the web dev server:
 
-1. Initializes the MySQL data directory on first run (`~/.mysql/smart_city_data`)
-2. Starts the MySQL server (socket at `~/.mysql/mysql.sock`)
-3. Runs `db_setup.sql` to create the database and tables (idempotent — safe to re-run)
-4. Launches the Java CLI app
-
-**Manual build:**
 ```bash
-JAVA_HOME=/nix/store/3ilfkn8kxd9f6g5hgr0wpbnhghs4mq2m-openjdk-21.0.7+6 \
-  PATH=$JAVA_HOME/bin:$PATH \
-  mvn package -DskipTests
+cd web && npm run dev
 ```
 
-**Run directly:**
+The app runs at **port 5000** and is visible in the Replit preview pane.
+
+## Web app stack
+
+- **Framework:** React 18 + Vite 5
+- **Styling:** Plain CSS with CSS custom properties (design tokens)
+- **Data:** GitHub API (`/repos/Rajath2005/SmartCityApp`) — falls back to static data if rate-limited
+- **Fonts:** Inter + JetBrains Mono (Google Fonts)
+
+## Web app structure
+
+```
+web/
+  index.html                        # HTML shell with Google Fonts
+  vite.config.js                    # Vite config (port 5000, host true)
+  package.json                      # React + Vite deps
+  src/
+    main.jsx                        # React entry point
+    App.jsx                         # Root component — composes all sections
+    styles/global.css               # Design tokens, reset, shared utilities
+    data/staticData.js              # All static content & fallback data
+    hooks/useGitHub.js              # GitHub API hook (stats, contributors, issues)
+    components/
+      Nav.jsx / Nav.css             # Fixed navbar with scroll effect + mobile menu
+      Hero.jsx / Hero.css           # Full-height hero with live repo stats
+      About.jsx / About.css         # Project overview + tech stack grid
+      Architecture.jsx / Architecture.css  # Tabbed architecture diagrams
+      Features.jsx / Features.css   # User & Admin feature cards + DB schema
+      Contribute.jsx / Contribute.css      # Steps + live filterable issues browser
+      Roadmap.jsx / Roadmap.css     # Roadmap with progress bar
+      AIMaintainer.jsx / AIMaintainer.css  # AI Maintainer documentation
+      Contributors.jsx / Contributors.css  # Live contributors grid + CTA
+      Footer.jsx / Footer.css       # Footer with links
+```
+
+## Java CLI app (original project)
+
+The original Java CLI application lives in `src/` and `db_setup.sql`. To run it:
+
 ```bash
 bash start.sh
 ```
 
-## Environment variables (all optional)
-
-| Variable      | Default          | Description                  |
-|---------------|------------------|------------------------------|
-| `DB_HOST`     | `127.0.0.1`      | MySQL host                   |
-| `DB_PORT`     | `3306`           | MySQL port                   |
-| `DB_NAME`     | `smart_city_guide` | Database name              |
-| `DB_USER`     | `root`           | MySQL user (bootstrap always uses root; keep as `root` for full access) |
-| `DB_PASSWORD` | *(empty)*        | MySQL password               |
-
-## Default admin credentials
-
-- **Username:** `admin`
-- **Password:** `Admin@123`
-
-## Project structure
-
-```
-src/com/smartcity/
-  main/SmartCityApp.java   # CLI entry point, all menus and SQL queries
-  db/DBConnection.java     # MySQL connection via env vars
-  model/Place.java         # Place model
-  model/User.java          # User model
-db_setup.sql               # Schema (used by start.sh on first run)
-pom.xml                    # Maven build (Java 21, mysql-connector-j 9.1.0)
-start.sh                   # Startup script: MySQL init + app launch
-```
+This initialises MySQL, loads the schema, and launches `target/app.jar`.
 
 ## User preferences
 
 - Keep existing project structure (Java/Maven/MySQL) as-is.
+- Web dashboard is on the `feature/web-dashboard` branch.
