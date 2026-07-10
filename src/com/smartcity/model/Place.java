@@ -14,9 +14,12 @@ public class Place {
     private String category;
     private String location;
     private String description;
+    private double latitude;
+    private double longitude;
 
     /**
-     * Constructs a new Place object with all necessary details.
+     * Constructs a new Place object with legacy parameters. Latitude and longitude are initialized,
+     * but not set correctly.
      *
      * @param id          The unique identifier for the place.
      * @param name        The name of the place.
@@ -30,6 +33,30 @@ public class Place {
         this.category = category;
         this.location = location;
         this.description = description;
+        latitude = -1;
+        longitude = -1;
+    }
+
+
+    /**
+     * Constructs a new Place object with all necessary details.
+     * @param id          The unique identifier for the place.
+     * @param name        The name of the place.
+     * @param category    The category this place belongs to (e.g., Hotel, Park).
+     * @param location    The general location or address of the place.
+     * @param description A brief description of the place.
+     * @param latitude    Latitude coordinates of the place.
+     * @param longitude   Longitude coordinates of the place.
+     */
+    public Place(int id, String name, String category, String location, String description,
+                 double latitude, double longitude) {
+        this.id = id;
+        this.name = name;
+        this.category = category;
+        this.location = location;
+        this.description = description;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     /**
@@ -136,5 +163,41 @@ public class Place {
                 ", location='" + location + '\'' +
                 ", description='" + description + '\'' +
                 '}';
+    }
+
+    /**
+     * Gets the latitude coordinates of the place.
+     *
+     * @return The latitude coordinates.
+     */
+    public double getLatitude() {
+        return latitude;
+    }
+
+    /**
+     * Sets the latitude coordinates of the place.
+     *
+     * @param latitude The new latitude coordinates.
+     */
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
+    }
+
+    /**
+     * Gets the longitude coordinates of the place.
+     *
+     * @return The longitude coordinates.
+     */
+    public double getLongitude() {
+        return longitude;
+    }
+
+    /**
+     * Sets the longitude coordinates of the place.
+     *
+     * @param longitude The new longitude coordinates.
+     */
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
     }
 }

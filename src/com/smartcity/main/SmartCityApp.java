@@ -1,5 +1,6 @@
 package com.smartcity.main;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.InputMismatchException;
 import java.util.Scanner;
@@ -23,7 +24,7 @@ import com.smartcity.db.DBConnection;
  */
 public class SmartCityApp {
     // Scanner object shared across methods
-    private static Scanner scanner = new Scanner(System.in);
+    private final static Scanner scanner = new Scanner(System.in);
 
     // SQL Query Constants
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
@@ -32,9 +33,9 @@ public class SmartCityApp {
     private static final String SELECT_ALL_PLACES_QUERY = "SELECT * FROM places";
     private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
     private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
-    private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description) VALUES (?, ?, ?, ?, ?)";
+    private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
     private static final String SELECT_PLACE_BY_ID_QUERY = "SELECT * FROM places WHERE id = ?";
-    private static final String UPDATE_PLACE_QUERY = "UPDATE places SET name = ?, category = ?, location = ?, description = ? WHERE id = ?";
+    private static final String UPDATE_PLACE_QUERY = "UPDATE places SET name = ?, category = ?, location = ?, description = ?, latitude = ?, longitude = ? WHERE id = ?";
     private static final String DELETE_PLACE_QUERY = "DELETE FROM places WHERE id = ?";
     private static final String SELECT_ALL_CREDENTIALS_QUERY = "SELECT id, password FROM users";
 
@@ -109,7 +110,7 @@ public class SmartCityApp {
     private static String hashPassword(String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(password.getBytes("UTF-8"));
+            byte[] hash = md.digest(password.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) {
                 sb.append(String.format("%02x", b));
@@ -354,6 +355,41 @@ public class SmartCityApp {
         }
     }
 
+    // Handles printing places from SQL ResultSet
+    private static void PlaceResultPrintout(ResultSet resultSet) {
+        boolean hasResults = false;
+        try {
+            // Loop through ResultSet and display each place
+            while (resultSet.next()) {
+                hasResults = true;
+                int id = resultSet.getInt("id");
+                String name = resultSet.getString("name");
+                String category = resultSet.getString("category");
+                String location = resultSet.getString("location");
+                String description = resultSet.getString("description");
+                double latitude = resultSet.getDouble("latitude");
+                double longitude = resultSet.getDouble("longitude");
+
+                System.out.println("\n📍 Place ID: " + id);
+                System.out.println("   Name: " + name);
+                System.out.println("   Category: " + category);
+                System.out.println("   Location: " + location);
+                System.out.println("   Description: " + description);
+                System.out.println("   Coordinates " + latitude + ", " + longitude);
+            }
+
+            // Handle case when no places found
+            if (!hasResults) {
+                System.out.println("❌ No places available at the moment.");
+            }
+
+            System.out.println("\n" + "-".repeat(50));
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch places from database.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
     // Display all places in the city from MySQL database
     private static void viewAllPlaces() {
         try (Connection connection = DBConnection.getConnection()) {
@@ -368,38 +404,14 @@ public class SmartCityApp {
                 // Display header
                 System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
                 System.out.println("-".repeat(50));
-
-                boolean hasResults = false;
-
-                // Loop through ResultSet and display each place
-                while (resultSet.next()) {
-                    hasResults = true;
-                    int id = resultSet.getInt("id");
-                    String name = resultSet.getString("name");
-                    String category = resultSet.getString("category");
-                    String location = resultSet.getString("location");
-                    String description = resultSet.getString("description");
-
-                    System.out.println("\n📍 Place ID: " + id);
-                    System.out.println("   Name: " + name);
-                    System.out.println("   Category: " + category);
-                    System.out.println("   Location: " + location);
-                    System.out.println("   Description: " + description);
-                }
-
-                // Handle case when no places found
-                if (!hasResults) {
-                    System.out.println("❌ No places available at the moment.");
-                }
-
-                System.out.println("\n" + "-".repeat(50));
+                PlaceResultPrintout(resultSet);
             }
 
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to fetch places from database.");
-            System.out.println("   Error message: " + e.getMessage());
+            } catch (SQLException e) {
+                System.out.println("❌ Error: Failed to fetch places from database.");
+                System.out.println("   Error message: " + e.getMessage());
+            }
         }
-    }
 
     // Display search menu with search options
     private static void searchPlacesMenu() {
@@ -452,29 +464,7 @@ public class SmartCityApp {
                     // Display search results
                     System.out.println("\n🔍 Search Results for Category: " + searchCategory);
                     System.out.println("-".repeat(50));
-
-                    boolean found = false;
-
-                    // Loop through ResultSet and display matching places
-                    while (resultSet.next()) {
-                        found = true;
-                        String name = resultSet.getString("name");
-                        String category = resultSet.getString("category");
-                        String location = resultSet.getString("location");
-                        String description = resultSet.getString("description");
-
-                        System.out.println("\n📍 " + name);
-                        System.out.println("   Category: " + category);
-                        System.out.println("   Location: " + location);
-                        System.out.println("   Description: " + description);
-                    }
-
-                    // Handle no results found
-                    if (!found) {
-                        System.out.println("❌ No places found in category: " + searchCategory);
-                    }
-
-                    System.out.println("-".repeat(50));
+                    PlaceResultPrintout(resultSet);
                 }
             }
 
@@ -502,29 +492,7 @@ public class SmartCityApp {
                     // Display search results
                     System.out.println("\n🔍 Search Results for Location: " + searchLocation);
                     System.out.println("-".repeat(50));
-
-                    boolean found = false;
-
-                    // Loop through ResultSet and display matching places
-                    while (resultSet.next()) {
-                        found = true;
-                        String name = resultSet.getString("name");
-                        String category = resultSet.getString("category");
-                        String location = resultSet.getString("location");
-                        String description = resultSet.getString("description");
-
-                        System.out.println("\n📍 " + name);
-                        System.out.println("   Category: " + category);
-                        System.out.println("   Location: " + location);
-                        System.out.println("   Description: " + description);
-                    }
-
-                    // Handle no results found
-                    if (!found) {
-                        System.out.println("❌ No places found in location: " + searchLocation);
-                    }
-
-                    System.out.println("-".repeat(50));
+                    PlaceResultPrintout(resultSet);
                 }
             }
 
@@ -625,6 +593,31 @@ public class SmartCityApp {
         System.out.print("Enter description: ");
         String description = scanner.nextLine();
 
+        // Get place latitude
+        System.out.print("Enter place latitude: ");
+        double latitude;
+        try {
+            latitude = scanner.nextDouble();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid latitude. Please enter a valid number.");
+            scanner.nextLine(); // Clear newline from input buffer
+            return;
+        }
+
+        // Get place longitude
+        System.out.print("Enter place longitude: ");
+        double longitude;
+        try {
+            longitude = scanner.nextDouble();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid longitude. Please enter a valid number.");
+            scanner.nextLine(); // Clear newline from input buffer
+            return;
+        }
+
+
         try (Connection connection = DBConnection.getConnection()) {
             if (connection == null) {
                 System.out.println("❌ Failed to connect to database.");
@@ -637,6 +630,8 @@ public class SmartCityApp {
                 pstmt.setString(3, category);
                 pstmt.setString(4, location);
                 pstmt.setString(5, description);
+                pstmt.setDouble(6, latitude);
+                pstmt.setDouble(7, longitude);
 
                 int rowsAffected = pstmt.executeUpdate();
 
@@ -676,6 +671,7 @@ public class SmartCityApp {
 
             // Fetch existing place
             String currentName, currentCategory, currentLocation, currentDescription;
+            double currentLatitude, currentLongitude;
             try (PreparedStatement selectPstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
                 selectPstmt.setInt(1, placeId);
                 try (ResultSet rs = selectPstmt.executeQuery()) {
@@ -688,6 +684,8 @@ public class SmartCityApp {
                     currentCategory = rs.getString("category");
                     currentLocation = rs.getString("location");
                     currentDescription = rs.getString("description");
+                    currentLatitude = rs.getDouble("latitude");
+                    currentLongitude = rs.getDouble("longitude");
                 }
             }
 
@@ -696,6 +694,10 @@ public class SmartCityApp {
             System.out.println("Category: " + currentCategory);
             System.out.println("Location: " + currentLocation);
             System.out.println("Description: " + currentDescription);
+            System.out.println("Coordinates: " + currentLatitude + ", " + currentLongitude);
+
+            double newLatitude = currentLatitude;
+            double newLongitude = currentLongitude;
 
             // Take new inputs
             System.out.print("\nEnter new name (or press Enter to keep current): ");
@@ -710,6 +712,13 @@ public class SmartCityApp {
             System.out.print("Enter new description (or press Enter to keep current): ");
             String newDescription = scanner.nextLine();
 
+            System.out.print("Enter new latitude (or press Enter to keep current): ");
+            String newLatitudeString = scanner.nextLine();
+
+            System.out.print("Enter new longitude (or press Enter to keep current): ");
+            String newLongitudeString = scanner.nextLine();
+
+
             // Use old values if input is empty
             if (newName.isEmpty()) {
                 newName = currentName;
@@ -722,6 +731,12 @@ public class SmartCityApp {
             }
             if (newDescription.isEmpty()) {
                 newDescription = currentDescription;
+            }
+            if (newLatitudeString.isEmpty()) {
+                newLatitude = currentLatitude;
+            }
+            if (newLongitudeString.isEmpty()) {
+                newLongitude = currentLongitude;
             }
 
             // 🔥 VALIDATION
@@ -740,12 +755,32 @@ public class SmartCityApp {
                 return;
             }
 
+            if (!newLatitudeString.trim().isEmpty()) {
+                try {
+                    newLatitude = Double.parseDouble(newLatitudeString);
+                } catch (NumberFormatException e) {
+                    System.out.println("❌ Error: Latitude is not a valid number.");
+                    return;
+                }
+            }
+
+            if (!newLongitudeString.trim().isEmpty()) {
+                try {
+                    newLongitude = Double.parseDouble(newLongitudeString);
+                } catch (NumberFormatException e) {
+                    System.out.println("❌ Error: Longitude is not a valid number.");
+                    return;
+                }
+            }
+
             try (PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PLACE_QUERY)) {
                 updatePstmt.setString(1, newName);
                 updatePstmt.setString(2, newCategory);
                 updatePstmt.setString(3, newLocation);
                 updatePstmt.setString(4, newDescription);
-                updatePstmt.setInt(5, placeId);
+                updatePstmt.setDouble(5, newLatitude);
+                updatePstmt.setDouble(6, newLongitude);
+                updatePstmt.setInt(7, placeId);
 
                 int rows = updatePstmt.executeUpdate();
 
