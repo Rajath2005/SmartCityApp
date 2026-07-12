@@ -80,7 +80,7 @@ public class SmartCityApp {
 
     // Gets a database connection and prints a helpful error if it fails.
     // @return a valid Connection, or null if connection failed
-    private static Connection getConnectionOrExit() {
+    private static Connection getConnectionOrPrintError() {
         Connection conn = DBConnection.getConnection();
         if (conn == null) {
             System.out.println("❌ Could not connect to the database.");
@@ -138,7 +138,7 @@ public class SmartCityApp {
     // One-time startup migration: rehashes any legacy plaintext passwords to
     // SHA-256
     private static void migrateExistingPlaintextPasswords() {
-        Connection connection = getConnectionOrExit();
+        Connection connection = getConnectionOrPrintError();
 
         if (connection == null) {
             return;
@@ -203,7 +203,7 @@ public class SmartCityApp {
             password = scanner.nextLine();
         }
 
-        try (Connection connection = getConnectionOrExit()) {
+        try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
@@ -252,7 +252,7 @@ public class SmartCityApp {
         System.out.print("Enter password: ");
         String password = scanner.nextLine();
 
-        try (Connection connection = getConnectionOrExit()) {
+        try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
@@ -404,7 +404,7 @@ public class SmartCityApp {
 
     // Display all places in the city from MySQL database
     private static void viewAllPlaces() {
-        try (Connection connection = getConnectionOrExit()) {
+        try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
@@ -462,7 +462,7 @@ public class SmartCityApp {
         System.out.print("\nEnter category to search: ");
         String searchCategory = scanner.nextLine();
 
-        try (Connection connection = getConnectionOrExit()) {
+        try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
@@ -489,7 +489,7 @@ public class SmartCityApp {
         System.out.print("\nEnter location to search: ");
         String searchLocation = scanner.nextLine();
 
-        try (Connection connection = getConnectionOrExit()) {
+        try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
@@ -626,7 +626,7 @@ public class SmartCityApp {
             return;
         }
 
-        try (Connection connection = getConnectionOrExit()) {
+        try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
@@ -670,7 +670,7 @@ public class SmartCityApp {
             return;
         }
 
-        try (Connection connection = getConnectionOrExit()) {
+        try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
@@ -818,7 +818,7 @@ public class SmartCityApp {
             return;
         }
 
-        try (Connection connection = getConnectionOrExit()) {
+        try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
