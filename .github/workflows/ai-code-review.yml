@@ -1,0 +1,24 @@
+name: "PR Agent Code Review"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  pr_agent:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: write
+    steps:
+      - name: PR Agent action step
+        id: pragent
+        uses: Codium-ai/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          config.model: "gemini/gemini-1.5-pro-latest"
+          config.fallback_models: "gemini/gemini-1.5-flash"
+          pr_reviewer.extra_instructions: "Please review this code as a Full Stack Developer. Evaluate the React component structure, MERN stack API integration, and general performance. Ensure the UI/UX remains modern and professional."
