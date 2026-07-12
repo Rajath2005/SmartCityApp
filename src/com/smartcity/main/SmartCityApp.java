@@ -78,6 +78,20 @@ public class SmartCityApp {
         scanner.close();
     }
 
+    // Gets a database connection and prints a helpful error if it fails.
+    // @return a valid Connection, or null if connection failed
+    private static Connection getConnectionOrExit() {
+        Connection conn = DBConnection.getConnection();
+        if (conn == null) {
+            System.out.println("❌ Could not connect to the database.");
+            System.out.println("   Please check:");
+            System.out.println("   1. Is MySQL running on your machine?");
+            System.out.println("   2. Did you run db_setup.sql to create the database?");
+            System.out.println("   3. Is your password correct?");
+        }
+        return conn;
+    }
+
     // Display menu options to user
     private static void displayMenu() {
         clearScreen();
@@ -121,19 +135,19 @@ public class SmartCityApp {
         }
     }
 
-    // One-time startup migration: rehashes any legacy plaintext passwords to SHA-256
+    // One-time startup migration: rehashes any legacy plaintext passwords to
+    // SHA-256
     private static void migrateExistingPlaintextPasswords() {
-        Connection connection = DBConnection.getConnection();
+        Connection connection = getConnectionOrExit();
 
         if (connection == null) {
-            System.out.println("❌ Skipped password migration: failed to connect to database.");
             return;
         }
 
         try (connection;
-             PreparedStatement selectPstmt = connection.prepareStatement(SELECT_ALL_CREDENTIALS_QUERY);
-             PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PASSWORD_QUERY);
-             ResultSet resultSet = selectPstmt.executeQuery()) {
+                PreparedStatement selectPstmt = connection.prepareStatement(SELECT_ALL_CREDENTIALS_QUERY);
+                PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PASSWORD_QUERY);
+                ResultSet resultSet = selectPstmt.executeQuery()) {
 
             int migratedCount = 0;
 
@@ -189,9 +203,8 @@ public class SmartCityApp {
             password = scanner.nextLine();
         }
 
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = getConnectionOrExit()) {
             if (connection == null) {
-                System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
@@ -239,9 +252,8 @@ public class SmartCityApp {
         System.out.print("Enter password: ");
         String password = scanner.nextLine();
 
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = getConnectionOrExit()) {
             if (connection == null) {
-                System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
@@ -392,14 +404,13 @@ public class SmartCityApp {
 
     // Display all places in the city from MySQL database
     private static void viewAllPlaces() {
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = getConnectionOrExit()) {
             if (connection == null) {
-                System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
             try (PreparedStatement pstmt = connection.prepareStatement(SELECT_ALL_PLACES_QUERY);
-                 ResultSet resultSet = pstmt.executeQuery()) {
+                    ResultSet resultSet = pstmt.executeQuery()) {
 
                 // Display header
                 System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
@@ -407,11 +418,11 @@ public class SmartCityApp {
                 PlaceResultPrintout(resultSet);
             }
 
-            } catch (SQLException e) {
-                System.out.println("❌ Error: Failed to fetch places from database.");
-                System.out.println("   Error message: " + e.getMessage());
-            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch places from database.");
+            System.out.println("   Error message: " + e.getMessage());
         }
+    }
 
     // Display search menu with search options
     private static void searchPlacesMenu() {
@@ -451,9 +462,8 @@ public class SmartCityApp {
         System.out.print("\nEnter category to search: ");
         String searchCategory = scanner.nextLine();
 
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = getConnectionOrExit()) {
             if (connection == null) {
-                System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
@@ -479,9 +489,8 @@ public class SmartCityApp {
         System.out.print("\nEnter location to search: ");
         String searchLocation = scanner.nextLine();
 
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = getConnectionOrExit()) {
             if (connection == null) {
-                System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
@@ -617,10 +626,8 @@ public class SmartCityApp {
             return;
         }
 
-
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = getConnectionOrExit()) {
             if (connection == null) {
-                System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
@@ -663,9 +670,8 @@ public class SmartCityApp {
             return;
         }
 
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = getConnectionOrExit()) {
             if (connection == null) {
-                System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
@@ -717,7 +723,6 @@ public class SmartCityApp {
 
             System.out.print("Enter new longitude (or press Enter to keep current): ");
             String newLongitudeString = scanner.nextLine();
-
 
             // Use old values if input is empty
             if (newName.isEmpty()) {
@@ -813,9 +818,8 @@ public class SmartCityApp {
             return;
         }
 
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = getConnectionOrExit()) {
             if (connection == null) {
-                System.out.println("❌ Failed to connect to database.");
                 return;
             }
 
