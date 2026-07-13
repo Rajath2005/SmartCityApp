@@ -269,6 +269,13 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/AnasHasan786">
+                    <img src="https://avatars.githubusercontent.com/u/124896245?v=4" width="100;" alt="AnasHasan786"/>
+                    <br />
+                    <sub><b>Anas Hasan</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/rajibul004">
                     <img src="https://avatars.githubusercontent.com/u/157000457?v=4" width="100;" alt="rajibul004"/>
                     <br />
@@ -289,6 +296,8 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                     <sub><b>Julito-Dev</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/Nishcahy">
                     <img src="https://avatars.githubusercontent.com/u/141355948?v=4" width="100;" alt="Nishcahy"/>
