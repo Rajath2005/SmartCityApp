@@ -2,12 +2,13 @@ package com.smartcity.main;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.InputMismatchException;
-import java.util.Scanner;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.InputMismatchException;
+import java.util.Scanner;
+
 import com.smartcity.db.DBConnection;
 
 /**
@@ -30,7 +31,6 @@ public class SmartCityApp {
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
     private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
     private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ?";
-    private static final String SELECT_ALL_PLACES_QUERY = "SELECT * FROM places";
     private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
     private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
     private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -337,6 +337,7 @@ public class SmartCityApp {
             System.out.println("3. 📍 View nearby services");
             System.out.println("4. 🧭 Check navigation");
             System.out.println("5. 🚪 Logout");
+
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -347,17 +348,21 @@ public class SmartCityApp {
                     // Display all city attractions
                     viewAllPlaces();
                     break;
+                // Display all city attractions sorted by ID
                 case 2:
+                    viewAllPlacesSortedById();
+                    break;
+                case 3:
                     // Search for places
                     searchPlacesMenu();
                     break;
-                case 3:
+                case 4:
                     System.out.println("Finding nearby services...");
                     break;
-                case 4:
+                case 5:
                     System.out.println("Opening navigation...");
                     break;
-                case 5:
+                case 6:
                     System.out.println("Logging out. Goodbye!");
                     inUserMenu = false;
                     break;
@@ -404,16 +409,40 @@ public class SmartCityApp {
 
     // Display all places in the city from MySQL database
     private static void viewAllPlaces() {
+        String query = "SELECT * FROM places ORDER BY name ASC";
+
         try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
 
-            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_ALL_PLACES_QUERY);
+            try (PreparedStatement pstmt = connection.prepareStatement(query);
                     ResultSet resultSet = pstmt.executeQuery()) {
 
                 // Display header
                 System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
+                System.out.println("-".repeat(50));
+                PlaceResultPrintout(resultSet);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch places from database.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
+    private static void viewAllPlacesSortedById() {
+        String query = "SELECT * FROM places ORDER BY id ASC";
+
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(query);
+                    ResultSet resultSet = pstmt.executeQuery()) {
+
+                System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS (BY ID) =====");
                 System.out.println("-".repeat(50));
                 PlaceResultPrintout(resultSet);
             }
