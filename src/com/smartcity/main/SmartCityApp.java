@@ -44,8 +44,7 @@ public class SmartCityApp {
     private static final String SHA256_HEX_PATTERN = "^[a-f0-9]{64}$";
 
     public static void main(String[] args) {
-        System.out.println("Smart City Guide Started Successfully");
-
+            printBanner(); 
         migrateExistingPlaintextPasswords();
 
         boolean isRunning = true;
@@ -77,7 +76,15 @@ public class SmartCityApp {
 
         scanner.close();
     }
-
+    private static void printBanner() {
+        System.out.println();
+        System.out.println("  ╔══════════════════════════════════════════╗");
+        System.out.println("  ║        🏙️  SMART CITY GUIDE  🏙️         ║");
+        System.out.println("  ║   Your intelligent city companion app    ║");
+        System.out.println("  ║           Version 1.0.0 • Java           ║");
+        System.out.println("  ╚══════════════════════════════════════════╝");
+        System.out.println();
+    }
     // Gets a database connection and prints a helpful error if it fails.
     // @return a valid Connection, or null if connection failed
     private static Connection getConnectionOrPrintError() {
