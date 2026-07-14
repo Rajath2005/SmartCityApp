@@ -96,9 +96,9 @@ public class SmartCityApp {
     private static void displayMenu() {
         clearScreen();
         System.out.println("\n===== Smart City Guide Menu =====");
-        System.out.println("1. 📝 Register");
-        System.out.println("2. 🔑 Login");
-        System.out.println("3. 🚪 Exit");
+        System.out.println("1. Register");
+        System.out.println("2. Login");
+        System.out.println("3. Exit");
         System.out.print("Enter your choice: ");
     }
 
@@ -295,10 +295,10 @@ public class SmartCityApp {
         while (inAdminMenu) {
             clearScreen();
             System.out.println("\n===== Admin Menu (User: " + username + ") =====");
-            System.out.println("1. 👥 View all users");
-            System.out.println("2. 🏗️ Manage city resources");
-            System.out.println("3. 📋 View system logs");
-            System.out.println("4. 🚪 Logout");
+            System.out.println("1. View all users");
+            System.out.println("2. Manage city resources");
+            System.out.println("3. View system logs");
+            System.out.println("4. Logout");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -332,11 +332,11 @@ public class SmartCityApp {
         while (inUserMenu) {
             clearScreen();
             System.out.println("\n===== User Menu (User: " + username + ") =====");
-            System.out.println("1. 🏙 Explore city attractions");
-            System.out.println("2. 🔍 Search places");
-            System.out.println("3. 📍 View nearby services");
-            System.out.println("4. 🧭 Check navigation");
-            System.out.println("5. 🚪 Logout");
+            System.out.println("1. Explore city attractions");
+            System.out.println("2. Search places");
+            System.out.println("3. View nearby services");
+            System.out.println("4. Check navigation");
+            System.out.println("5. Logout");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -430,9 +430,9 @@ public class SmartCityApp {
 
         while (inSearchMenu) {
             System.out.println("\n===== Search Places =====");
-            System.out.println("1. 🏷️ Search by category");
-            System.out.println("2. 📌 Search by location");
-            System.out.println("3. ⬅️ Back");
+            System.out.println("1. Search by category");
+            System.out.println("2. Search by location");
+            System.out.println("3. Back");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -517,10 +517,10 @@ public class SmartCityApp {
 
         while (inResourceMenu) {
             System.out.println("\n===== Manage City Resources =====");
-            System.out.println("1. ➕ Add new place");
-            System.out.println("2. ✏️ Update place");
-            System.out.println("3. 🗑️ Delete place");
-            System.out.println("4. ⬅️ Back");
+            System.out.println("1. Add new place");
+            System.out.println("2. Update place");
+            System.out.println("3. Delete place");
+            System.out.println("4. Back");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
