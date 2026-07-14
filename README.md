@@ -283,12 +283,21 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/chrisriv10">
+                    <img src="https://avatars.githubusercontent.com/u/185133702?v=4" width="100;" alt="chrisriv10"/>
+                    <br />
+                    <sub><b>Christopher Rivera</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/JhansiOruganti-43">
                     <img src="https://avatars.githubusercontent.com/u/155613006?v=4" width="100;" alt="JhansiOruganti-43"/>
                     <br />
                     <sub><b>Jhansi Oruganti</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/Julito-Dev">
                     <img src="https://avatars.githubusercontent.com/u/210993135?v=4" width="100;" alt="Julito-Dev"/>
@@ -296,8 +305,6 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                     <sub><b>Julito-Dev</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/Nishcahy">
                     <img src="https://avatars.githubusercontent.com/u/141355948?v=4" width="100;" alt="Nishcahy"/>
