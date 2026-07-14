@@ -44,7 +44,7 @@ public class SmartCityApp {
     private static final String SHA256_HEX_PATTERN = "^[a-f0-9]{64}$";
 
     public static void main(String[] args) {
-        printBanner(); // Added
+            printBanner(); 
         migrateExistingPlaintextPasswords();
 
         boolean isRunning = true;
