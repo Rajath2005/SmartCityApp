@@ -76,15 +76,15 @@ public class SmartCityApp {
 
         scanner.close();
     }
-    private static void printBanner() {
-        System.out.println();
-        System.out.println("  ╔══════════════════════════════════════════╗");
-        System.out.println("  ║        🏙️  SMART CITY GUIDE  🏙️         ║");
-        System.out.println("  ║   Your intelligent city companion app    ║");
-        System.out.println("  ║           Version 1.0.0 • Java           ║");
-        System.out.println("  ╚══════════════════════════════════════════╝");
-        System.out.println();
-    }
+        private static void printBanner() {
+            System.out.println();
+            System.out.println("  ╔══════════════════════════════════════════╗");
+            System.out.println("  ║        🏙️  SMART CITY GUIDE  🏙️         ║");
+            System.out.println("  ║   Your intelligent city companion app    ║");
+            System.out.println("  ║           Version 1.0.0 • Java           ║");
+            System.out.println("  ╚══════════════════════════════════════════╝");
+            System.out.println();
+        }
     // Gets a database connection and prints a helpful error if it fails.
     // @return a valid Connection, or null if connection failed
     private static Connection getConnectionOrPrintError() {
@@ -98,15 +98,15 @@ public class SmartCityApp {
         }
         return conn;
     }
-
     // Display menu options to user
-    private static void displayMenu() {
-        clearScreen();
-        System.out.println("\n===== Smart City Guide Menu =====");
-        System.out.println("1. Register");
-        System.out.println("2. Login");
-        System.out.println("3. Exit");
-        System.out.print("Enter your choice: ");
+    private static void printBanner() {
+        System.out.println();
+        System.out.println("  ╔══════════════════════════════════════════╗");
+        System.out.println("  ║        🏙️  SMART CITY GUIDE  🏙️         ║");
+        System.out.println("  ║   Your intelligent city companion app    ║");
+        System.out.println("  ║           Version 1.0.0 • Java           ║");
+        System.out.println("  ╚══════════════════════════════════════════╝");
+        System.out.println();
     }
 
     // Validates username: 4-20 characters, alphanumeric only
