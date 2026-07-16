@@ -239,12 +239,21 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/Oriyans-sunset">
+                    <img src="https://avatars.githubusercontent.com/u/83832376?v=4" width="100;" alt="Oriyans-sunset"/>
+                    <br />
+                    <sub><b>Priyanshu Rastogi</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/shikha033">
                     <img src="https://avatars.githubusercontent.com/u/177534265?v=4" width="100;" alt="shikha033"/>
                     <br />
                     <sub><b>Shikha Singh</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/sshrrutiiii">
                     <img src="https://avatars.githubusercontent.com/u/196079073?v=4" width="100;" alt="sshrrutiiii"/>
@@ -252,8 +261,6 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                     <sub><b>Shruti Dixit</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/davidhrabcak">
                     <img src="https://avatars.githubusercontent.com/u/94175077?v=4" width="100;" alt="davidhrabcak"/>
@@ -289,6 +296,8 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                     <sub><b>Christopher Rivera</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/JhansiOruganti-43">
                     <img src="https://avatars.githubusercontent.com/u/155613006?v=4" width="100;" alt="JhansiOruganti-43"/>
@@ -296,8 +305,6 @@ A huge shoutout to everyone who has contributed to this project! 🙌
                     <sub><b>Jhansi Oruganti</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/Julito-Dev">
                     <img src="https://avatars.githubusercontent.com/u/210993135?v=4" width="100;" alt="Julito-Dev"/>
