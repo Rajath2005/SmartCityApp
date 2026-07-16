@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   self-assign:
-    if: github.event.comment.body == '/assign' || github.event.comment.body == '/take'
+    if: ${{ github.event.comment.body == '/assign' || github.event.comment.body == '/take' }}
     runs-on: ubuntu-latest
     steps:
       - name: Assign commenter to issue or PR
