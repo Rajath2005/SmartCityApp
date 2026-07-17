@@ -10,6 +10,7 @@ import java.util.InputMismatchException;
 import java.util.Scanner;
 
 import com.smartcity.db.DBConnection;
+import com.smartcity.utils.ValidationUtils;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -104,21 +105,13 @@ public class SmartCityApp {
 
     // Validates username: 4-20 characters, alphanumeric only
     private static boolean isValidUsername(String username) {
-        if (username == null || username.isEmpty()) {
-            return false;
-        }
-        String regex = "^[a-zA-Z0-9]{4,20}$";
-        return username.matches(regex);
+        return ValidationUtils.isValidUsername(username);
     }
 
     // Validates password: Minimum 8 chars, 1 uppercase, 1 lowercase, 1 number, 1
     // special char
     private static boolean isValidPassword(String password) {
-        if (password == null || password.isEmpty()) {
-            return false;
-        }
-        String regex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
-        return password.matches(regex);
+        return ValidationUtils.isValidPassword(password);
     }
 
     private static String hashPassword(String password) {
