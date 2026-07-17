@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Explicitly allow major AI search bots to crawl for citation
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+Sitemap: https://smartcityapp.example.com/sitemap.xml
