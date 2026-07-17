@@ -15,7 +15,7 @@ import com.smartcity.db.DBConnection;
  * The main entry point for the Smart City Guide application.
  * This class handles the command-line interface (CLI) interactions,
  * user authentication (registration & login), and routing to
- * respective User or Admin menus.
+ * the respective User or Admin menus.
  * <p>
  * It currently acts as a monolithic controller that directly manages
  * SQL queries and database connections.
@@ -43,6 +43,13 @@ public class SmartCityApp {
 
     private static final String SHA256_HEX_PATTERN = "^[a-f0-9]{64}$";
 
+    /**
+     * Application entry point. Starts the Smart City Guide CLI, runs a
+     * one-time migration of any legacy plaintext passwords, and then
+     * repeatedly displays the main menu until the user chooses to exit.
+     *
+     * @param args command-line arguments (not used)
+     */
     public static void main(String[] args) {
         System.out.println("Smart City Guide Started Successfully");
 
@@ -78,8 +85,12 @@ public class SmartCityApp {
         scanner.close();
     }
 
-    // Gets a database connection and prints a helpful error if it fails.
-    // @return a valid Connection, or null if connection failed
+    /**
+     * Gets a database connection and prints a helpful error message if the
+     * connection attempt fails.
+     *
+     * @return a valid {@link Connection}, or {@code null} if the connection failed
+     */
     private static Connection getConnectionOrPrintError() {
         Connection conn = DBConnection.getConnection();
         if (conn == null) {
@@ -92,7 +103,10 @@ public class SmartCityApp {
         return conn;
     }
 
-    // Display menu options to user
+    /**
+     * Clears the screen and prints the main menu options (Register, Login, Exit)
+     * to standard output.
+     */
     private static void displayMenu() {
         clearScreen();
         System.out.println("\n===== Smart City Guide Menu =====");
@@ -102,7 +116,12 @@ public class SmartCityApp {
         System.out.print("Enter your choice: ");
     }
 
-    // Validates username: 4-20 characters, alphanumeric only
+    /**
+     * Validates that a username meets the required format.
+     *
+     * @param username the username string to validate
+     * @return true if valid (4-20 alphanumeric characters), false otherwise
+     */
     private static boolean isValidUsername(String username) {
         if (username == null || username.isEmpty()) {
             return false;
@@ -111,8 +130,14 @@ public class SmartCityApp {
         return username.matches(regex);
     }
 
-    // Validates password: Minimum 8 chars, 1 uppercase, 1 lowercase, 1 number, 1
-    // special char
+    /**
+     * Validates that a password meets the required strength rules.
+     *
+     * @param password the password string to validate
+     * @return true if valid (minimum 8 characters containing at least one
+     *         uppercase letter, one lowercase letter, one digit, and one
+     *         special character), false otherwise
+     */
     private static boolean isValidPassword(String password) {
         if (password == null || password.isEmpty()) {
             return false;
@@ -121,6 +146,14 @@ public class SmartCityApp {
         return password.matches(regex);
     }
 
+    /**
+     * Hashes a plaintext password using SHA-256 and encodes the result as a
+     * lowercase hexadecimal string.
+     *
+     * @param password the plaintext password to hash
+     * @return the SHA-256 hash of the password, represented as a 64-character
+     *         lowercase hexadecimal string
+     */
     private static String hashPassword(String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -135,8 +168,12 @@ public class SmartCityApp {
         }
     }
 
-    // One-time startup migration: rehashes any legacy plaintext passwords to
-    // SHA-256
+    /**
+     * One-time startup migration that scans all stored user passwords and
+     * re-hashes any that are not already in SHA-256 hex format (i.e. legacy
+     * plaintext passwords), replacing them in the database with their
+     * SHA-256 hash.
+     */
     private static void migrateExistingPlaintextPasswords() {
         Connection connection = getConnectionOrPrintError();
 
@@ -145,9 +182,9 @@ public class SmartCityApp {
         }
 
         try (connection;
-                PreparedStatement selectPstmt = connection.prepareStatement(SELECT_ALL_CREDENTIALS_QUERY);
-                PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PASSWORD_QUERY);
-                ResultSet resultSet = selectPstmt.executeQuery()) {
+             PreparedStatement selectPstmt = connection.prepareStatement(SELECT_ALL_CREDENTIALS_QUERY);
+             PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PASSWORD_QUERY);
+             ResultSet resultSet = selectPstmt.executeQuery()) {
 
             int migratedCount = 0;
 
@@ -171,7 +208,10 @@ public class SmartCityApp {
         }
     }
 
-    // Register new user directly to MySQL database with validation
+    /**
+     * Registers a new user by validating the provided credentials,
+     * ensuring the username is unique, and storing the user in the database.
+     */
     private static void register() {
         System.out.println("\n--- Registration ---");
 
@@ -208,7 +248,7 @@ public class SmartCityApp {
                 return;
             }
 
-            // Check if username already exists
+            // Check if the username already exists
             try (PreparedStatement checkPstmt = connection.prepareStatement(CHECK_USERNAME_EXISTS_QUERY)) {
                 checkPstmt.setString(1, username);
                 try (ResultSet resultSet = checkPstmt.executeQuery()) {
@@ -240,7 +280,11 @@ public class SmartCityApp {
         }
     }
 
-    // Login user by validating credentials from MySQL database
+    /**
+     * Prompts the user for a username and password, validates the credentials
+     * against the database, and routes the user to the Admin or User menu
+     * based on their stored role.
+     */
     private static void login() {
         System.out.println("\n--- Login ---");
 
@@ -288,7 +332,13 @@ public class SmartCityApp {
         }
     }
 
-    // Display admin menu with admin-specific options
+    /**
+     * Displays the admin menu loop, allowing the logged-in admin to view
+     * users, manage city resources, view system logs, or log out.
+     *
+     * @param username the username of the currently logged-in admin, used
+     *                  for display purposes
+     */
     private static void showAdminMenu(String username) {
         boolean inAdminMenu = true;
 
@@ -325,7 +375,14 @@ public class SmartCityApp {
         }
     }
 
-    // Display user menu with regular user options
+    /**
+     * Displays the regular user menu loop, allowing the logged-in user to
+     * explore attractions, search places, view nearby services, check
+     * navigation, or log out.
+     *
+     * @param username the username of the currently logged-in user, used
+     *                  for display purposes
+     */
     private static void showUserMenu(String username) {
         boolean inUserMenu = true;
 
@@ -372,7 +429,13 @@ public class SmartCityApp {
         }
     }
 
-    // Handles printing places from SQL ResultSet
+    /**
+     * Iterates over a {@link ResultSet} of places and prints the details of
+     * each one to standard output. Prints a "no places available" message
+     * if the result set is empty.
+     *
+     * @param resultSet the result set containing place rows to print
+     */
     private static void PlaceResultPrintout(ResultSet resultSet) {
         boolean hasResults = false;
         try {
@@ -407,7 +470,10 @@ public class SmartCityApp {
         }
     }
 
-    // Display all places in the city from MySQL database
+    /**
+     * Queries the database for all places, ordered alphabetically by name,
+     * and prints them to standard output.
+     */
     private static void viewAllPlaces() {
         String query = "SELECT * FROM places ORDER BY name ASC";
 
@@ -417,7 +483,7 @@ public class SmartCityApp {
             }
 
             try (PreparedStatement pstmt = connection.prepareStatement(query);
-                    ResultSet resultSet = pstmt.executeQuery()) {
+                 ResultSet resultSet = pstmt.executeQuery()) {
 
                 // Display header
                 System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
@@ -431,6 +497,10 @@ public class SmartCityApp {
         }
     }
 
+    /**
+     * Queries the database for all places, ordered by their ID in ascending
+     * order, and prints them to standard output.
+     */
     private static void viewAllPlacesSortedById() {
         String query = "SELECT * FROM places ORDER BY id ASC";
 
@@ -440,7 +510,7 @@ public class SmartCityApp {
             }
 
             try (PreparedStatement pstmt = connection.prepareStatement(query);
-                    ResultSet resultSet = pstmt.executeQuery()) {
+                 ResultSet resultSet = pstmt.executeQuery()) {
 
                 System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS (BY ID) =====");
                 System.out.println("-".repeat(50));
@@ -453,7 +523,10 @@ public class SmartCityApp {
         }
     }
 
-    // Display search menu with search options
+    /**
+     * Displays the search submenu loop, allowing the user to search places
+     * by category, search by location, or go back to the previous menu.
+     */
     private static void searchPlacesMenu() {
         boolean inSearchMenu = true;
 
@@ -486,7 +559,11 @@ public class SmartCityApp {
         }
     }
 
-    // Search places by category from MySQL database
+    /**
+     * Prompts the user for a category keyword and queries the database for
+     * all places whose category contains that keyword (case-insensitive),
+     * printing the matching results.
+     */
     private static void searchByCategory() {
         System.out.print("\nEnter category to search: ");
         String searchCategory = scanner.nextLine();
@@ -513,7 +590,11 @@ public class SmartCityApp {
         }
     }
 
-    // Search places by location from MySQL database
+    /**
+     * Prompts the user for a location keyword and queries the database for
+     * all places whose location contains that keyword (case-insensitive),
+     * printing the matching results.
+     */
     private static void searchByLocation() {
         System.out.print("\nEnter location to search: ");
         String searchLocation = scanner.nextLine();
@@ -540,7 +621,11 @@ public class SmartCityApp {
         }
     }
 
-    // Manage city resources - admin submenu
+    /**
+     * Displays the admin's city-resource management submenu loop, allowing
+     * the admin to add, update, or delete a place, or go back to the
+     * previous menu.
+     */
     private static void manageCityResources() {
         boolean inResourceMenu = true;
 
@@ -578,7 +663,11 @@ public class SmartCityApp {
         }
     }
 
-    // Add a new place to the city
+    /**
+     * Prompts the admin for a new place's ID, name, category, location,
+     * description, latitude, and longitude, validates the input, and
+     * inserts the new place into the database.
+     */
     private static void addNewPlace() {
         System.out.println("\n--- Add New Place ---");
 
@@ -684,7 +773,12 @@ public class SmartCityApp {
         }
     }
 
-    // Update an existing place in the city
+    /**
+     * Prompts the admin for a place ID, fetches the existing place details,
+     * allows the admin to optionally overwrite any field (pressing Enter
+     * keeps the current value), validates the new values, and updates the
+     * place in the database.
+     */
     private static void updatePlace() {
         System.out.println("\n--- Update Place ---");
 
@@ -831,7 +925,10 @@ public class SmartCityApp {
         }
     }
 
-    // Delete a place from the city
+    /**
+     * Prompts the admin for a place ID and deletes the corresponding place
+     * from the database, if it exists.
+     */
     private static void deletePlace() {
         System.out.println("\n--- Delete Place ---");
 
@@ -870,19 +967,37 @@ public class SmartCityApp {
         }
     }
 
+    /**
+     * Validates that a place name is not null or blank.
+     *
+     * @param name the place name to validate
+     * @return true if the name is non-null and contains non-whitespace
+     *         characters, false otherwise
+     */
     private static boolean isValidPlaceName(String name) {
         return name != null && !name.trim().isEmpty();
     }
 
+    /**
+     * Validates that a location string is not null or blank.
+     *
+     * @param location the locations string to validate
+     * @return true if the location is non-null and contains non-whitespace
+     *         characters, false otherwise
+     */
     private static boolean isValidLocation(String location) {
         return location != null && !location.trim().isEmpty();
     }
 
-    // Clear console logs: wipes previous menu/output from terminal before
-    // redrawing, keeping the CLI screen clean between menu displays.
-    // Note: relies on ANSI escape codes, works in real terminals (Linux/macOS,
-    // Windows Terminal/PowerShell with VT processing), but has no effect in
-    // IDE run consoles (IntelliJ/Eclipse) since those don't interpret ANSI.
+    /**
+     * Clears console logs: wipes previous menu/output from the terminal
+     * before redrawing, keeping the CLI screen clean between menu displays.
+     * <p>
+     * Note: relies on ANSI escape codes, works in real terminals
+     * (Linux/macOS, Windows Terminal/PowerShell with VT processing), but has
+     * no effect in IDE run consoles (IntelliJ/Eclipse) since those don't
+     * interpret ANSI.
+     */
     public static void clearScreen() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
