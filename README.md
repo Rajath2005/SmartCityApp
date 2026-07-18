@@ -85,5 +85,32 @@ SmartCityApp is uniquely designed to bridge the gap between algorithmic theory a
 > [!TIP]
 > **Ready to level up your Java skills?**
 > Start with the [DSA Master Guide](DSA_MASTER_GUIDE.md) to join the program. You will learn to implement custom comparators, command patterns, LRU caches, and complex graph routing.
+## ❓ FAQ & Troubleshooting
+
+**Q: I get `ClassNotFoundException: com.mysql.cj.jdbc.Driver`. What do I do?**
+
+You haven't added the MySQL JDBC JAR to your classpath. Download `mysql-connector-java-8.0.33.jar` from [MySQL's website](https://dev.mysql.com/downloads/connector/j/) and include it with `-cp` when compiling and running.
+
+**Q: The app asks for a MySQL password every time. Is that normal?**
+
+Yes! `DBConnection.java` prompts for your local MySQL root password at startup. This keeps the password out of the source code. Just type your MySQL password when asked.
+
+**Q: I get `Access denied for user 'root'@'localhost'`. Help?**
+
+Your MySQL password in the app doesn't match your actual MySQL password. Make sure you type the correct password when the app asks `"Enter MySQL password for user 'root':"`.
+
+**Q: `smart_city_guide` database doesn't exist. What do I do?**
+
+You need to run the setup script first:
+mysql -u root -p < db_setup.sql
+
+**Q: I ran the app but nothing happens / it hangs after asking for a password.**
+
+This usually means MySQL isn't running. 
+Start your MySQL service first (`mysql.server start` on macOS, or check Services on Windows), then run the app again.
+
+**Q: I get a `Communications link failure` error.**
+
+This means the app can't reach MySQL at all — double check MySQL is installed and running on `localhost`, and that no firewall is blocking the connection.
 
 *For contribution guidelines, code of conduct, and licensing information, please refer to the respective files in the repository root.*
