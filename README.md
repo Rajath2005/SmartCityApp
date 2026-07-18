@@ -2,9 +2,9 @@
 
 <img src="Assets/SmartCity.drawio.png" alt="Smart City Guide Architecture and Flow Diagram" width="100%"/>
 
-# Smart City Guide
+# Smart City Guide - Learn Java, DSA, and System Architecture
 
-**An open-source, interactive Java application designed to help you master Data Structures, Algorithms, and System Architecture.**
+**An open-source, interactive Java application designed to help beginners master Data Structures, Algorithms, and System Architecture through real-world contributions.**
 
 [![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com/)
 [![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
