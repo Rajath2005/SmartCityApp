@@ -10,6 +10,7 @@ import java.util.InputMismatchException;
 import java.util.Scanner;
 
 import com.smartcity.db.DBConnection;
+import com.smartcity.service.EmailService;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -29,7 +30,7 @@ public class SmartCityApp {
 
     // SQL Query Constants
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
-    private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
+    private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
     private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ?";
     private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
     private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
@@ -146,6 +147,16 @@ public class SmartCityApp {
         return password.matches(regex);
     }
 
+    //Method to validate the email
+    private static boolean isValidEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return false;
+        }
+
+        String regex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+        return email.matches(regex);
+    }
+
     /**
      * Hashes a plaintext password using SHA-256 and encodes the result as a
      * lowercase hexadecimal string.
@@ -242,6 +253,12 @@ public class SmartCityApp {
             System.out.print("Enter password (min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char): ");
             password = scanner.nextLine();
         }
+        System.out.println("Enter your email:");
+        String email = scanner.nextLine();
+        while (!isValidEmail(email)) {
+            System.out.println("Invalid Email. Please try again.");
+            email = scanner.nextLine();
+        }
 
         try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
@@ -263,11 +280,15 @@ public class SmartCityApp {
             try (PreparedStatement insertPstmt = connection.prepareStatement(INSERT_USER_QUERY)) {
                 insertPstmt.setString(1, username);
                 insertPstmt.setString(2, hashPassword(password));
-                insertPstmt.setString(3, "USER"); // Default role for new users
+                insertPstmt.setString(3, email);
+                insertPstmt.setString(4, "USER"); // Default role for new users
+
+
 
                 int rowsAffected = insertPstmt.executeUpdate();
 
                 if (rowsAffected > 0) {
+                    EmailService.sendWelcomeEmail(email, username);
                     System.out.println("✅ Success! User '" + username + "' registered successfully.");
                 } else {
                     System.out.println("❌ Error: Failed to register user. Please try again.");
@@ -436,7 +457,7 @@ public class SmartCityApp {
      *
      * @param resultSet the result set containing place rows to print
      */
-    private static void PlaceResultPrintout(ResultSet resultSet) {
+    private static void placeResultPrintout(ResultSet resultSet) {
         boolean hasResults = false;
         try {
             // Loop through ResultSet and display each place
@@ -488,7 +509,7 @@ public class SmartCityApp {
                 // Display header
                 System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
                 System.out.println("-".repeat(50));
-                PlaceResultPrintout(resultSet);
+                placeResultPrintout(resultSet);
             }
 
         } catch (SQLException e) {
@@ -514,7 +535,7 @@ public class SmartCityApp {
 
                 System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS (BY ID) =====");
                 System.out.println("-".repeat(50));
-                PlaceResultPrintout(resultSet);
+                placeResultPrintout(resultSet);
             }
 
         } catch (SQLException e) {
@@ -580,7 +601,7 @@ public class SmartCityApp {
                     // Display search results
                     System.out.println("\n🔍 Search Results for Category: " + searchCategory);
                     System.out.println("-".repeat(50));
-                    PlaceResultPrintout(resultSet);
+                    placeResultPrintout(resultSet);
                 }
             }
 
@@ -611,7 +632,7 @@ public class SmartCityApp {
                     // Display search results
                     System.out.println("\n🔍 Search Results for Location: " + searchLocation);
                     System.out.println("-".repeat(50));
-                    PlaceResultPrintout(resultSet);
+                    placeResultPrintout(resultSet);
                 }
             }
 
