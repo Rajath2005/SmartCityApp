@@ -15,6 +15,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CompletableFuture;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,7 +28,12 @@ import java.util.logging.Logger;
  * Service class for sending email notifications in the Smart City Guide application.
  */
 public class EmailService {
-
+    private static final ExecutorService EMAIL_EXECUTOR = new ThreadPoolExecutor(
+        5,                      // corePoolSize
+        10,                     // maximumPoolSize
+        60L, TimeUnit.SECONDS,  // keepAliveTime
+        new LinkedBlockingQueue<>(100)
+    );
     private static final Logger LOGGER = Logger.getLogger(EmailService.class.getName());
     private static final String SMTP_HOST = getEnv("SMTP_HOST", "smtp.gmail.com");
     private static final String SMTP_PORT = getEnv("SMTP_PORT", "587");
@@ -91,9 +102,23 @@ public class EmailService {
      * @param username Registered username.
      */
     public static void sendWelcomeEmail(String toEmail, String username) {
+
+
+        CompletableFuture.runAsync(() ->
+        {
+            sendEmail(toEmail, username);
+        }, EMAIL_EXECUTOR).exceptionally(ex -> {
+            LOGGER.log(Level.SEVERE, "Failed to send welcome email to " + toEmail, ex);
+            return null;
+        })
+        ;
+    }
+
+    public static void sendEmail(String toEmail, String username)
+    {
         if (!isSmtpConfigured()) {
             System.out.println("⚠️ SMTP credentials not fully configured (SMTP_USER/SMTP_PASSWORD/SMTP_FROM). "
-                    + "Skipping welcome email.");
+                + "Skipping welcome email.");
             return;
         }
 
@@ -128,3 +153,5 @@ public class EmailService {
         }
     }
 }
+
+
