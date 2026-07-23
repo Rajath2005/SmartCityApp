@@ -40,6 +40,7 @@ public class EmailService {
     private static final String SMTP_USER = getEnv("SMTP_USER", "");
     private static final String SMTP_PASSWORD = getEnv("SMTP_PASSWORD", "");
     private static final String SMTP_FROM = getEnv("SMTP_FROM", "");
+    private static final String APP_URL = getEnv("APP_URL", "http://localhost:5000");
 
     /**
      * Reads environment variable or returns default value if missing.
@@ -92,7 +93,8 @@ public class EmailService {
                     + "</body></html>";
         }
 
-        return templateContent.replace("{{username}}", username);
+        return templateContent.replace("{{username}}", username)
+                .replace("{{appUrl}}", APP_URL);
     }
 
     /**
