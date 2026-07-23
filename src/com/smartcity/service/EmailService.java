@@ -103,7 +103,7 @@ public class EmailService {
      * @param toEmail  Destination email address.
      * @param username Registered username.
      */
-    private static void sendWelcomeEmail(String toEmail, String username) {
+    public static void sendWelcomeEmail(String toEmail, String username) {
 
 
         CompletableFuture.runAsync(() ->
@@ -116,7 +116,7 @@ public class EmailService {
         ;
     }
 
-    public static void sendEmail(String toEmail, String username)
+    private static void sendEmail(String toEmail, String username)
     {
         if (!isSmtpConfigured()) {
             System.out.println("⚠️ SMTP credentials not fully configured (SMTP_USER/SMTP_PASSWORD/SMTP_FROM). "
