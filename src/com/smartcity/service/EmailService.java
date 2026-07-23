@@ -103,7 +103,7 @@ public class EmailService {
      * @param toEmail  Destination email address.
      * @param username Registered username.
      */
-    public static void sendWelcomeEmail(String toEmail, String username) {
+    private static void sendWelcomeEmail(String toEmail, String username) {
 
 
         CompletableFuture.runAsync(() ->
