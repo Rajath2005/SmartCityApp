@@ -162,6 +162,8 @@ public class Place {
                 ", category='" + category + '\'' +
                 ", location='" + location + '\'' +
                 ", description='" + description + '\'' +
+                ", latitude=" + latitude +
+                ", longitude=" + longitude +
                 '}';
     }
 
