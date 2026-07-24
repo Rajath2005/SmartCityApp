@@ -76,6 +76,7 @@ public class SmartCityApp {
                     break;
                 case 3:
                     System.out.println("Exiting Smart City Guide. Goodbye!");
+                    EmailService.shutdownExecutor();
                     isRunning = false;
                     break;
                 default:

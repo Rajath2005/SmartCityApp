@@ -29,9 +29,9 @@ import java.util.logging.Logger;
  */
 public class EmailService {
     private static final ExecutorService EMAIL_EXECUTOR = new ThreadPoolExecutor(
-        5,                      // corePoolSize
-        10,                     // maximumPoolSize
-        60L, TimeUnit.SECONDS,  // keepAliveTime
+        5,
+        10,
+        60L, TimeUnit.SECONDS,
         new LinkedBlockingQueue<>(100)
     );
     private static final Logger LOGGER = Logger.getLogger(EmailService.class.getName());
@@ -40,7 +40,43 @@ public class EmailService {
     private static final String SMTP_USER = getEnv("SMTP_USER", "");
     private static final String SMTP_PASSWORD = getEnv("SMTP_PASSWORD", "");
     private static final String SMTP_FROM = getEnv("SMTP_FROM", "");
-    private static final String APP_URL = getEnv("APP_URL", "http://localhost:5000");
+    private static final String APP_URL = initAppUrl();
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            shutdownExecutor();
+        }, "email-executor-shutdown-hook"));
+    }
+
+    private static String initAppUrl() {
+        String url = System.getenv("APP_URL");
+        if (url == null || url.isBlank()) {
+            LOGGER.info("APP_URL environment variable is not set. Defaulting to local development URL: http://localhost:5000");
+            return "http://localhost:5000";
+        }
+        return url;
+    }
+
+    /**
+     * Shuts down the email executor service cleanly, waiting for pending tasks to complete.
+     */
+    public static void shutdownExecutor() {
+        if (!EMAIL_EXECUTOR.isShutdown()) {
+            LOGGER.info("Shutting down EmailService executor...");
+            EMAIL_EXECUTOR.shutdown();
+            try {
+                if (!EMAIL_EXECUTOR.awaitTermination(5, TimeUnit.SECONDS)) {
+                    EMAIL_EXECUTOR.shutdownNow();
+                    if (!EMAIL_EXECUTOR.awaitTermination(5, TimeUnit.SECONDS)) {
+                        LOGGER.log(Level.WARNING, "EmailService executor did not terminate cleanly.");
+                    }
+                }
+            } catch (InterruptedException ie) {
+                EMAIL_EXECUTOR.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
 
     /**
      * Reads environment variable or returns default value if missing.
