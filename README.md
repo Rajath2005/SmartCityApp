@@ -44,6 +44,10 @@ Ensure you have **Java JDK 8+** and **MySQL Server** installed. You will also ne
    ```bash
    mysql -u root -p < db_setup.sql
    ```
+   *Note: If upgrading an existing database without the `email` column, run the migration script:*
+   ```bash
+   mysql -u root -p smart_city_guide < migrations/V2__add_email_column.sql
+   ```
 2. **Clone and Run:**
    ```bash
    git clone https://github.com/Rajath2005/SmartCityApp.git
