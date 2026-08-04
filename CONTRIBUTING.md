@@ -5,8 +5,27 @@ Whether you're fixing a bug, adding a feature, or improving documentation — al
 
 ---
 
+## 🎓 What You'll Learn
+
+By contributing to Smart City Guide, you'll gain hands-on experience with:
+
+| Skill | Where You'll Use It |
+|-------|-------------------|
+| ☕ Core Java | Writing methods, classes, control flow |
+| 🗄️ MySQL & JDBC | Querying databases, prepared statements |
+| 🔐 Input Validation | Regex, defensive programming |
+| 🏗️ OOP Principles | Encapsulation, getters/setters |
+| 🔀 Git Workflow | Fork, branch, commit, pull request |
+| 🐛 Debugging | Reading stack traces, fixing bugs |
+| 📝 Documentation | Writing clear Javadoc and comments |
+| 📦 Maven | Building the project and managing dependencies in `pom.xml` |
+| ✅ Code Style Checks | Keeping the Checkstyle rules in `checkstyle.xml` happy |
+
+---
+
 ## 📋 Table of Contents
 
+- [What You'll Learn](#-what-youll-learn)
 - [Code of Conduct](#-code-of-conduct)
 - [Getting Started](#-getting-started)
 - [How to Contribute](#-how-to-contribute)
