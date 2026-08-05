@@ -52,9 +52,11 @@ Ensure you have **Java JDK 8+** and **MySQL Server** installed. You will also ne
    ```bash
    git clone https://github.com/Rajath2005/SmartCityApp.git
    cd SmartCityApp/src
-   javac com/smartcity/main/SmartCityApp.java
-   java com.smartcity.main.SmartCityApp
+   javac -cp ".;mysql-connector-java-8.0.33.jar" src/com/smartcity/main/SmartCityApp.java
+   java -cp ".;mysql-connector-java-8.0.33.jar" com.smartcity.main.SmartCityApp
    ```
+   *💡 On Mac/Linux, replace ; with : in the classpath separator.
+   Download the JAR from: https://dev.mysql.com/downloads/connector/j/*
 
 ### Docker Setup
 
