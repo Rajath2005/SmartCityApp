@@ -11,6 +11,8 @@ import java.util.Scanner;
 
 import com.smartcity.db.DBConnection;
 import com.smartcity.service.EmailService;
+import com.smartcity.structures.RecentlyViewedManager;
+import java.util.List;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -27,6 +29,9 @@ import com.smartcity.service.EmailService;
 public class SmartCityApp {
     // Scanner object shared across methods
     private final static Scanner scanner = new Scanner(System.in);
+
+    // Recently Viewed Places Manager
+    private static final RecentlyViewedManager recentlyViewedManager = new RecentlyViewedManager();
 
     // SQL Query Constants
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
@@ -411,11 +416,14 @@ public class SmartCityApp {
         while (inUserMenu) {
             clearScreen();
             System.out.println("\n===== User Menu (User: " + username + ") =====");
-            System.out.println("1. 🏙 Explore city attractions");
-            System.out.println("2. 🔍 Search places");
-            System.out.println("3. 📍 View nearby services");
-            System.out.println("4. 🧭 Check navigation");
-            System.out.println("5. 🚪 Logout");
+            System.out.println("1. 🏙 Explore city attractions (A-Z)");
+            System.out.println("2. 🏙 Explore city attractions (By ID)");
+            System.out.println("3. 🔍 Search places");
+            System.out.println("4. 📖 View place details (by ID)");
+            System.out.println("5. 🕒 View recently viewed places");
+            System.out.println("6. 📍 View nearby services");
+            System.out.println("7. 🧭 Check navigation");
+            System.out.println("8. 🚪 Logout");
 
             System.out.print("Enter your choice: ");
 
@@ -424,31 +432,120 @@ public class SmartCityApp {
 
             switch (choice) {
                 case 1:
-                    // Display all city attractions
                     viewAllPlaces();
                     break;
-                // Display all city attractions sorted by ID
                 case 2:
                     viewAllPlacesSortedById();
                     break;
                 case 3:
-                    // Search for places
                     searchPlacesMenu();
                     break;
                 case 4:
-                    System.out.println("Finding nearby services...");
+                    viewPlaceDetails();
                     break;
                 case 5:
-                    System.out.println("Opening navigation...");
+                    viewRecentlyViewedPlaces();
                     break;
                 case 6:
+                    System.out.println("Finding nearby services...");
+                    break;
+                case 7:
+                    System.out.println("Opening navigation...");
+                    break;
+                case 8:
                     System.out.println("Logging out. Goodbye!");
+                    recentlyViewedManager.clear();
                     inUserMenu = false;
                     break;
                 default:
                     System.out.println("Invalid choice. Please try again.");
             }
         }
+    }
+
+    /**
+     * Prompts the user for a place ID, fetches its details from the database,
+     * prints them, and records the view in the RecentlyViewedManager.
+     */
+    private static void viewPlaceDetails() {
+        System.out.print("\nEnter place ID to view details: ");
+        int placeId;
+        try {
+            placeId = scanner.nextInt();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid ID. Please enter a number.");
+            scanner.nextLine();
+            return;
+        }
+
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
+                pstmt.setInt(1, placeId);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        System.out.println("\n📖 ===== PLACE DETAILS =====");
+                        System.out.println("📍 Place ID: " + rs.getInt("id"));
+                        System.out.println("   Name: " + rs.getString("name"));
+                        System.out.println("   Category: " + rs.getString("category"));
+                        System.out.println("   Location: " + rs.getString("location"));
+                        System.out.println("   Description: " + rs.getString("description"));
+                        System.out.println("   Coordinates: " + rs.getDouble("latitude") + ", " + rs.getDouble("longitude"));
+                        System.out.println("-".repeat(50));
+                        
+                        // Record view
+                        recentlyViewedManager.viewPlace(placeId);
+                    } else {
+                        System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch place details.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Fetches the recently viewed places from the manager and displays them.
+     */
+    private static void viewRecentlyViewedPlaces() {
+        List<Integer> recentIds = recentlyViewedManager.getRecent();
+        if (recentIds.isEmpty()) {
+            System.out.println("\n🕒 You haven't viewed any places yet.");
+            return;
+        }
+
+        System.out.println("\n🕒 ===== RECENTLY VIEWED PLACES =====");
+        System.out.println("-".repeat(50));
+
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
+                for (int id : recentIds) {
+                    pstmt.setInt(1, id);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            System.out.println("📍 Place ID: " + rs.getInt("id"));
+                            System.out.println("   Name: " + rs.getString("name"));
+                            System.out.println("   Category: " + rs.getString("category"));
+                            System.out.println("");
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch recently viewed places.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+        System.out.println("-".repeat(50));
     }
 
     /**
