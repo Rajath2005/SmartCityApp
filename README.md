@@ -21,6 +21,7 @@
 ## Features
 
 ### For Users & Admins
+- **Live City Stats:** A no-login dashboard showing total attractions, registered users, a per-category breakdown, and the busiest area — all read live from the database.
 - **Interactive Navigation:** Search and discover city attractions, restaurants, and parks.
 - **Role-Based Access Control (RBAC):** Secure authentication for users and administrators.
 - **Dynamic Data Management:** Admins can easily add, update, or remove city locations.
