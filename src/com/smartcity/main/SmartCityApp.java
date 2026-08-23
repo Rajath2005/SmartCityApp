@@ -408,6 +408,26 @@ public class SmartCityApp {
     private static void showUserMenu(String username) {
         boolean inUserMenu = true;
 
+        public static void changePassword(String username){
+            System.out.print("Enter your current password: ");
+            String currentPassword = scanner.nextLine();
+            if(curentPassword==SELECT id FROM users WHERE username=? AND password=?){
+                System.out.print("Enter your new password: ");
+                String newPassword = scanner.nextLine();
+                if(isValidPassword(newPassword)){
+                    UPDATE users SET password=? WHERE username=?
+                }else{
+                    System.out.println("❌ Invalid password. Please try again.");
+                }
+            }else{
+                System.out.println("❌ Current password is incorrect. Please try again.");
+            }
+            System.out.println("confirm new password: ");
+            String confirmNewPassword = scanner.nextLine();
+            if(newPassword.equals(confirmNewPassword)){
+                System.out.println("✅ Password changed successfully.");
+        }
+
         while (inUserMenu) {
             clearScreen();
             System.out.println("\n===== User Menu (User: " + username + ") =====");
@@ -416,6 +436,7 @@ public class SmartCityApp {
             System.out.println("3. 📍 View nearby services");
             System.out.println("4. 🧭 Check navigation");
             System.out.println("5. 🚪 Logout");
+            System.out.println("6. ⬅ Change password");
 
             System.out.print("Enter your choice: ");
 
@@ -442,9 +463,9 @@ public class SmartCityApp {
                     System.out.println("Opening navigation...");
                     break;
                 case 6:
-                    System.out.println("Logging out. Goodbye!");
-                    inUserMenu = false;
+                    changePassword(username);
                     break;
+                    
                 default:
                     System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
             }
