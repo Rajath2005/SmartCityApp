@@ -80,7 +80,7 @@ public class SmartCityApp {
                     isRunning = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
             }
         }
 
@@ -392,7 +392,7 @@ public class SmartCityApp {
                     inAdminMenu = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
             }
         }
     }
@@ -446,7 +446,7 @@ public class SmartCityApp {
                     inUserMenu = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
             }
         }
     }
@@ -576,7 +576,7 @@ public class SmartCityApp {
                     inSearchMenu = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
             }
         }
     }
@@ -680,7 +680,7 @@ public class SmartCityApp {
                     inResourceMenu = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
             }
         }
     }
