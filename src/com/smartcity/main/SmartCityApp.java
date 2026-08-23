@@ -411,21 +411,51 @@ public class SmartCityApp {
         public static void changePassword(String username){
             System.out.print("Enter your current password: ");
             String currentPassword = scanner.nextLine();
-            if(curentPassword==SELECT id FROM users WHERE username=? AND password=?){
-                System.out.print("Enter your new password: ");
-                String newPassword = scanner.nextLine();
-                if(isValidPassword(newPassword)){
-                    UPDATE users SET password=? WHERE username=?
+            try{
+                String query="SELECT id FROM users WHERE username = ? AND password = ?";
+                PreparedStatement stmt=connection.prepareStatement(query);
+                stmt.setString(1, username);
+                stmt.setString(2, hashPassword(currentPassword));
+
+                ResultSet rs=stmt.executeQuery();
+
+                if(rs.next()){
+                    System.out.print("Enter your new password: ");
+                    String newPassword = scanner.nextLine();
+                    if(isValidPassword(newPassword)){
+                        System.out.print("Confirm your new password: ");
+                        String confirmPassword = scanner.nextLine();
+
+                        if(newPassword.equals(confirmPassword)){
+                            String updateQuery = "UPDATE users SET password = ? WHERE username = ?";
+                            PreparedStatement updateStmt = connection.prepareStatement(updateQuery);
+                            updateStmt.setString(1, hashPassword(newPassword));
+                            updateStmt.setString(2, username);
+
+                            updateStmt.executeUpdate();
+
+                            System.out.println("✅ Password changed successfully!");
+                            updateStmt.close();
+                        }
+                        else{
+                            System.out.println("❌ New password and confirmation do not match.");
+
+                        }
+
+                        
                 }else{
-                    System.out.println("❌ Invalid password. Please try again.");
+                    System.out.println("❌ Invalid Password.");
                 }
+                
             }else{
-                System.out.println("❌ Current password is incorrect. Please try again.");
+                System.out.println("❌ Current password is incorrect.");
             }
-            System.out.println("confirm new password: ");
-            String confirmNewPassword = scanner.nextLine();
-            if(newPassword.equals(confirmNewPassword)){
-                System.out.println("✅ Password changed successfully.");
+            rs.close();
+            stmt.close();
+        }
+        catch(SQLException e){
+            System.out.println("❌ Error: Failed to change password.");
+            System.out.println("   Error message: " + e.getMessage());
         }
 
         while (inUserMenu) {
