@@ -351,7 +351,7 @@ public class SmartCityApp {
      * @param username the username of the currently logged-in admin, used
      *                  for display purposes
      */
-    private static void showAdminMenu(String username) {
+    public static void showAdminMenu(String username) {
         boolean inAdminMenu = true;
 
         while (inAdminMenu) {
@@ -397,7 +397,7 @@ public class SmartCityApp {
      * @param username the username of the currently logged-in user, used
      *                  for display purposes
      */
-    private static void showUserMenu(String username) {
+    public static void showUserMenu(String username) {
         boolean inUserMenu = true;
 
         while (inUserMenu) {
