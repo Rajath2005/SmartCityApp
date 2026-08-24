@@ -366,6 +366,8 @@ public class SmartCityApp {
             int choice = scanner.nextInt();
             scanner.nextLine(); // Clear newline from input buffer
 
+
+            
             switch (choice) {
                 case 1:
                     System.out.println("Viewing all registered users...");
