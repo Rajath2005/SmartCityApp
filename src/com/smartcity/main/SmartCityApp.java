@@ -6,10 +6,15 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.InputMismatchException;
+import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 
 import com.smartcity.db.DBConnection;
+import com.smartcity.model.Place;
 import com.smartcity.service.EmailService;
 
 /**
@@ -40,6 +45,8 @@ public class SmartCityApp {
     private static final String DELETE_PLACE_QUERY = "DELETE FROM places WHERE id = ?";
     private static final String SELECT_ALL_CREDENTIALS_QUERY = "SELECT id, password FROM users";
     private static final String COUNT_PLACES_QUERY = "SELECT COUNT(*) FROM places";
+    // Ordering by id makes the offset stable, so the same day always lands on the same place
+    private static final String SELECT_PLACE_AT_OFFSET_QUERY = "SELECT * FROM places ORDER BY id LIMIT 1 OFFSET ?";
     private static final String COUNT_USERS_QUERY = "SELECT COUNT(*) FROM users";
     private static final String COUNT_PLACES_BY_CATEGORY_QUERY =
             "SELECT category, COUNT(*) AS cnt FROM places GROUP BY category ORDER BY cnt DESC, category ASC";
@@ -53,6 +60,10 @@ public class SmartCityApp {
     // Layout of the City Stats box, measured in terminal columns
     private static final int STATS_BOX_WIDTH = 44;
     private static final int STATS_LABEL_COLUMN = 27;
+
+    // Layout of the Place of the Day card, measured in terminal columns
+    private static final int PLACE_CARD_WIDTH = 46;
+    private static final int PLACE_CARD_COLON_COLUMN = 16;
 
     /**
      * Application entry point. Starts the Smart City Guide CLI, runs a
@@ -658,6 +669,8 @@ public class SmartCityApp {
                         if (role.equals("ADMIN")) {
                             showAdminMenu(username);
                         } else {
+                            // Regulars get a daily attraction spotlight; admins do not
+                            showPlaceOfTheDay(connection);
                             showUserMenu(username);
                         }
                     } else {
@@ -670,6 +683,219 @@ public class SmartCityApp {
             System.out.println("❌ Error: Failed to login user.");
             System.out.println("   Error message: " + e.getMessage());
         }
+    }
+
+    /**
+     * Prints the "Place of the Day" card: a single attraction spotlighted for
+     * the whole calendar day, shown to regular users right after they log in.
+     * <p>
+     * The pick is deterministic rather than random: the current date (as an
+     * epoch day number) seeds the generator, so every login on the same day
+     * lands on the same place, and the spotlight rolls over at midnight.
+     * If the city has no attractions recorded yet, a friendly nudge is printed
+     * instead of the card.
+     *
+     * @param connection an open database connection, reused from the login check
+     */
+    private static void showPlaceOfTheDay(Connection connection) {
+        try {
+            int totalPlaces = countRows(connection, COUNT_PLACES_QUERY);
+
+            if (totalPlaces == 0) {
+                printEmptyPlaceOfTheDayCard();
+            } else {
+                Place place = findPlaceOfTheDay(connection, totalPlaces);
+
+                if (place == null) {
+                    // The row count and the row fetch are separate queries, so a
+                    // place deleted between them would leave us empty-handed.
+                    printEmptyPlaceOfTheDayCard();
+                } else {
+                    printPlaceOfTheDayCard(place);
+                }
+            }
+        } catch (SQLException e) {
+            // A missing spotlight should never block an otherwise successful login.
+            System.out.println("❌ Could not load the Place of the Day right now.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+
+        // The user menu clears the screen the moment it is drawn, so hold the
+        // card on screen until the user has actually had a chance to read it.
+        System.out.print("\nPress Enter to continue to your menu... ");
+        scanner.nextLine();
+    }
+
+    /**
+     * Picks today's featured place. The date seeds the generator so the choice
+     * is stable for the whole day, and that choice becomes an offset into the
+     * id-ordered list of places.
+     *
+     * @param connection  an open database connection
+     * @param totalPlaces how many places exist, used to bound the offset
+     * @return the place featured today, or {@code null} if the row could not be read
+     * @throws SQLException if the lookup query fails
+     */
+    private static Place findPlaceOfTheDay(Connection connection, int totalPlaces) throws SQLException {
+        long seed = LocalDate.now().toEpochDay();
+        Random rng = new Random(seed);
+        int offset = rng.nextInt(totalPlaces);
+
+        try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_AT_OFFSET_QUERY)) {
+            pstmt.setInt(1, offset);
+
+            try (ResultSet resultSet = pstmt.executeQuery()) {
+                if (!resultSet.next()) {
+                    return null;
+                }
+
+                return new Place(
+                        resultSet.getInt("id"),
+                        resultSet.getString("name"),
+                        resultSet.getString("category"),
+                        resultSet.getString("location"),
+                        resultSet.getString("description"),
+                        resultSet.getDouble("latitude"),
+                        resultSet.getDouble("longitude"));
+            }
+        }
+    }
+
+    /**
+     * Renders the featured place inside a bordered card.
+     *
+     * @param place the place to spotlight
+     */
+    private static void printPlaceOfTheDayCard(Place place) {
+        System.out.println();
+        System.out.println("╔" + "═".repeat(PLACE_CARD_WIDTH) + "╗");
+        System.out.println(centeredCardRow("✨  PLACE OF THE DAY  ✨"));
+        System.out.println("╠" + "═".repeat(PLACE_CARD_WIDTH) + "╣");
+        System.out.println(cardRow("  📍  " + truncateToWidth(place.getName(), PLACE_CARD_WIDTH - 8)));
+        System.out.println(cardField("🏷️", "Category", place.getCategory()));
+        System.out.println(cardField("📌", "Location", place.getLocation()));
+
+        printCardDescription(place.getDescription());
+
+        System.out.println(cardRow(""));
+        System.out.println(cardRow("  💡 Type '1' in the menu to explore more!"));
+        System.out.println("╚" + "═".repeat(PLACE_CARD_WIDTH) + "╝");
+    }
+
+    /**
+     * Prints the description as a quoted, word-wrapped block inside the card.
+     * Places with no description simply get no block, keeping the card tidy.
+     *
+     * @param description the place description, which may be null or blank
+     */
+    private static void printCardDescription(String description) {
+        if (description == null || description.trim().isEmpty()) {
+            return;
+        }
+
+        System.out.println(cardRow(""));
+
+        for (String line : wrapToWidth("\"" + description.trim() + "\"", PLACE_CARD_WIDTH - 6)) {
+            System.out.println(cardRow("   " + line));
+        }
+    }
+
+    /**
+     * Builds an "icon label : value" row of the card, keeping the colons of
+     * every field aligned to the same column.
+     *
+     * @param icon  the emoji shown at the start of the row
+     * @param label the field name
+     * @param value the field value, which may be null or blank
+     * @return the fully padded row, including its box borders
+     */
+    private static String cardField(String icon, String label, String value) {
+        String left = "  " + icon + "  " + label;
+        int gap = Math.max(1, PLACE_CARD_COLON_COLUMN - displayWidth(left));
+        String shown = (value == null || value.trim().isEmpty()) ? "—" : value.trim();
+        String right = ": " + truncateToWidth(shown, PLACE_CARD_WIDTH - PLACE_CARD_COLON_COLUMN - 4);
+
+        return cardRow(left + " ".repeat(gap) + right);
+    }
+
+    /**
+     * Wraps content in the vertical borders of the card, padding it on the
+     * right so the card keeps a straight edge.
+     *
+     * @param content the row content, without borders
+     * @return the bordered, right-padded row
+     */
+    private static String cardRow(String content) {
+        int padding = Math.max(0, PLACE_CARD_WIDTH - displayWidth(content));
+        return "║" + content + " ".repeat(padding) + "║";
+    }
+
+    /**
+     * Wraps content in the vertical borders of the card, centring it between them.
+     *
+     * @param content the row content, without borders
+     * @return the bordered, centred row
+     */
+    private static String centeredCardRow(String content) {
+        int padding = Math.max(0, PLACE_CARD_WIDTH - displayWidth(content));
+        int leftPadding = padding / 2;
+        return "║" + " ".repeat(leftPadding) + content + " ".repeat(padding - leftPadding) + "║";
+    }
+
+    /**
+     * Splits text into lines that each occupy at most {@code maxWidth} terminal
+     * columns, breaking on spaces wherever possible. A single word longer than
+     * the limit is cut short rather than allowed to overflow the card.
+     *
+     * @param text     the text to wrap
+     * @param maxWidth the maximum number of columns any one line may occupy
+     * @return the wrapped lines, in order
+     */
+    private static List<String> wrapToWidth(String text, int maxWidth) {
+        List<String> lines = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+
+        for (String word : text.trim().split("\\s+")) {
+            if (current.length() == 0) {
+                current.append(word);
+            } else if (displayWidth(current.toString()) + 1 + displayWidth(word) <= maxWidth) {
+                current.append(' ').append(word);
+            } else {
+                lines.add(current.toString());
+                current.setLength(0);
+                current.append(word);
+            }
+
+            // A word too long to fit on a line of its own would still overflow.
+            if (displayWidth(current.toString()) > maxWidth) {
+                lines.add(truncateToWidth(current.toString(), maxWidth));
+                current.setLength(0);
+            }
+        }
+
+        if (current.length() > 0) {
+            lines.add(current.toString());
+        }
+
+        return lines;
+    }
+
+    /**
+     * Prints the fallback card shown when the city has no attractions recorded
+     * yet, so an empty database greets the user instead of showing nothing.
+     */
+    private static void printEmptyPlaceOfTheDayCard() {
+        System.out.println();
+        System.out.println("╔" + "═".repeat(PLACE_CARD_WIDTH) + "╗");
+        System.out.println(centeredCardRow("✨  PLACE OF THE DAY  ✨"));
+        System.out.println("╠" + "═".repeat(PLACE_CARD_WIDTH) + "╣");
+        System.out.println(cardRow(""));
+        System.out.println(centeredCardRow("🌱  No attractions to spotlight yet!"));
+        System.out.println(cardRow(""));
+        System.out.println(centeredCardRow("Check back soon — the city is"));
+        System.out.println(centeredCardRow("still being mapped out."));
+        System.out.println(cardRow(""));
+        System.out.println("╚" + "═".repeat(PLACE_CARD_WIDTH) + "╝");
     }
 
     /**
