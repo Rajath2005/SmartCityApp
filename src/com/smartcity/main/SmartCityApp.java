@@ -28,16 +28,6 @@ public class SmartCityApp {
     // Scanner object shared across methods
     private final static Scanner scanner = new Scanner(System.in);
 
-    // SQL Query Constants
-    private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
-    private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
-    private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ?";
-    private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
-    private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
-    private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    private static final String SELECT_PLACE_BY_ID_QUERY = "SELECT * FROM places WHERE id = ?";
-    private static final String UPDATE_PLACE_QUERY = "UPDATE places SET name = ?, category = ?, location = ?, description = ?, latitude = ?, longitude = ? WHERE id = ?";
-    private static final String DELETE_PLACE_QUERY = "DELETE FROM places WHERE id = ?";
     private static final String SELECT_ALL_CREDENTIALS_QUERY = "SELECT id, password FROM users";
 
     private static final String UPDATE_PASSWORD_QUERY = "UPDATE users SET password = ? WHERE id = ?";
