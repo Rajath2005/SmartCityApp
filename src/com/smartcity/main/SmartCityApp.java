@@ -9,6 +9,10 @@ import java.sql.SQLException;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
+import com.smartcity.commands.CommandInvoker;
+import com.smartcity.commands.MainMenuCommands.ExitCommand;
+import com.smartcity.commands.MainMenuCommands.LoginCommand;
+import com.smartcity.commands.MainMenuCommands.RegisterCommand;
 import com.smartcity.db.DBConnection;
 import com.smartcity.service.EmailService;
 
@@ -28,6 +32,10 @@ public class SmartCityApp {
     // Scanner object shared across methods
     private final static Scanner scanner = new Scanner(System.in);
 
+    private static CommandInvoker mainMenuInvoker = new CommandInvoker(scanner);
+    private static CommandInvoker userMenuInvoker = new CommandInvoker(scanner);
+    private static CommandInvoker adminMenuInvoker = new CommandInvoker(scanner);
+
     private static final String SELECT_ALL_CREDENTIALS_QUERY = "SELECT id, password FROM users";
 
     private static final String UPDATE_PASSWORD_QUERY = "UPDATE users SET password = ? WHERE id = ?";
@@ -45,9 +53,10 @@ public class SmartCityApp {
         System.out.println("Smart City Guide Started Successfully");
 
         migrateExistingPlaintextPasswords();
+        registerCommands();
 
         boolean isRunning = true;
-
+        
         // Loop to repeatedly show menu until user exits
         while (isRunning) {
             displayMenu();
@@ -56,27 +65,20 @@ public class SmartCityApp {
             int choice = scanner.nextInt();
             scanner.nextLine(); // Clear the newline character from input buffer
 
-            // Handle user choice
-            switch (choice) {
-                case 1:
-                    register();
-                    break;
-                case 2:
-                    login();
-                    break;
-                case 3:
-                    System.out.println("Exiting Smart City Guide. Goodbye!");
-                    EmailService.shutdownExecutor();
-                    isRunning = false;
-                    break;
-                default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
+            
+                
+            System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
             }
         }
 
         scanner.close();
     }
 
+    private static void registerCommands() {
+        mainMenuInvoker.registerCommand(1, new RegisterCommand());
+        mainMenuInvoker.registerCommand(2, new LoginCommand());
+        mainMenuInvoker.registerCommand(3, new ExitCommand());
+    }
     /**
      * Gets a database connection and prints a helpful error message if the
      * connection attempt fails.
@@ -640,7 +642,7 @@ public class SmartCityApp {
      * the admin to add, update, or delete a place, or go back to the
      * previous menu.
      */
-    private static void manageCityResources() {
+    public static void manageCityResources() {
         boolean inResourceMenu = true;
 
         while (inResourceMenu) {
