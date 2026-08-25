@@ -452,7 +452,7 @@ public class SmartCityApp {
      *
      * @param resultSet the result set containing place rows to print
      */
-    private static void placeResultPrintout(ResultSet resultSet) {
+    public static void placeResultPrintout(ResultSet resultSet) {
         boolean hasResults = false;
         try {
             // Loop through ResultSet and display each place
