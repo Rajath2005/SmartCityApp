@@ -10,9 +10,20 @@ import java.util.InputMismatchException;
 import java.util.Scanner;
 
 import com.smartcity.commands.CommandInvoker;
+import com.smartcity.commands.Command;
+import com.smartcity.commands.AdminMenuCommands.LogoutCommand;
+import com.smartcity.commands.AdminMenuCommands.ManageCityResourcesCommand;
+import com.smartcity.commands.AdminMenuCommands.ViewSystemLogsCommand;
+import com.smartcity.commands.AdminMenuCommands.ViewUsersCommand;
 import com.smartcity.commands.MainMenuCommands.ExitCommand;
 import com.smartcity.commands.MainMenuCommands.LoginCommand;
 import com.smartcity.commands.MainMenuCommands.RegisterCommand;
+import com.smartcity.commands.UserMenuComands.ExploreCityAttractionsCommand;
+import com.smartcity.commands.UserMenuComands.NavigationCommand;
+import com.smartcity.commands.UserMenuComands.NearbyServicesCommand;
+import com.smartcity.commands.UserMenuComands.SearchByCategoryCommand;
+import com.smartcity.commands.UserMenuComands.SearchByLocationCommand;
+import com.smartcity.commands.UserMenuComands.SearchPlacesCommand;
 import com.smartcity.db.DBConnection;
 import com.smartcity.service.EmailService;
 
@@ -42,6 +53,12 @@ public class SmartCityApp {
 
     private static final String SHA256_HEX_PATTERN = "^[a-f0-9]{64}$";
 
+    private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
+
+    private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
+
+    private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
     /**
      * Application entry point. Starts the Smart City Guide CLI, runs a
      * one-time migration of any legacy plaintext passwords, and then
@@ -56,29 +73,43 @@ public class SmartCityApp {
         registerCommands();
 
         boolean isRunning = true;
-        
+
         // Loop to repeatedly show menu until user exits
         while (isRunning) {
             displayMenu();
+            // Dispatch the selected action through the command invoker.
+            try {
+                int choice = Integer.parseInt(scanner.nextLine().trim());
+                if (choice < 1 || choice > 3) {
+                    System.out.println("❌ Invalid choice '" + choice
+                            + "'. Please enter a number between 1 and 3.");
+                    continue;
+                }
 
-            // Get user's choice
-            int choice = scanner.nextInt();
-            scanner.nextLine(); // Clear the newline character from input buffer
-
-            
-                
-            System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
+                mainMenuInvoker.executeCommand(choice);
+                isRunning = choice != 3;
+            } catch (NumberFormatException e) {
+                System.out.println("❌ Invalid choice. Please enter a number between 1 and 3.");
             }
         }
-
-        scanner.close();
     }
 
     private static void registerCommands() {
         mainMenuInvoker.registerCommand(1, new RegisterCommand());
         mainMenuInvoker.registerCommand(2, new LoginCommand());
         mainMenuInvoker.registerCommand(3, new ExitCommand());
+
+        adminMenuInvoker.registerCommand(1, new ViewUsersCommand());
+        adminMenuInvoker.registerCommand(2, new ManageCityResourcesCommand(scanner));
+        adminMenuInvoker.registerCommand(3, new ViewSystemLogsCommand());
+
+        userMenuInvoker.registerCommand(1, new ExploreCityAttractionsCommand());
+        userMenuInvoker.registerCommand(2, new SearchPlacesCommand(scanner));
+        userMenuInvoker.registerCommand(3, new NearbyServicesCommand());
+        userMenuInvoker.registerCommand(4, new NavigationCommand());
+        userMenuInvoker.registerCommand(5, new LogoutCommand());
     }
+
     /**
      * Gets a database connection and prints a helpful error message if the
      * connection attempt fails.
@@ -140,7 +171,7 @@ public class SmartCityApp {
         return password.matches(regex);
     }
 
-    //Method to validate the email
+    // Method to validate the email
     private static boolean isValidEmail(String email) {
         if (email == null || email.isEmpty()) {
             return false;
@@ -186,9 +217,9 @@ public class SmartCityApp {
         }
 
         try (connection;
-             PreparedStatement selectPstmt = connection.prepareStatement(SELECT_ALL_CREDENTIALS_QUERY);
-             PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PASSWORD_QUERY);
-             ResultSet resultSet = selectPstmt.executeQuery()) {
+                PreparedStatement selectPstmt = connection.prepareStatement(SELECT_ALL_CREDENTIALS_QUERY);
+                PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PASSWORD_QUERY);
+                ResultSet resultSet = selectPstmt.executeQuery()) {
 
             int migratedCount = 0;
 
@@ -276,8 +307,6 @@ public class SmartCityApp {
                 insertPstmt.setString(3, email);
                 insertPstmt.setString(4, "USER"); // Default role for new users
 
-
-
                 int rowsAffected = insertPstmt.executeUpdate();
 
                 if (rowsAffected > 0) {
@@ -295,69 +324,21 @@ public class SmartCityApp {
     }
 
     /**
-     * Prompts the user for a username and password, validates the credentials
-     * against the database, and routes the user to the Admin or User menu
-     * based on their stored role.
-     */
-    private static void login() {
-        System.out.println("\n--- Login ---");
-
-        // Get username from user input
-        System.out.print("Enter username: ");
-        String username = scanner.nextLine();
-
-        // Get password from user input
-        System.out.print("Enter password: ");
-        String password = scanner.nextLine();
-
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
-
-            // Create prepared statement with parameter binding
-            try (PreparedStatement pstmt = connection.prepareStatement(LOGIN_QUERY)) {
-                pstmt.setString(1, username);
-                pstmt.setString(2, hashPassword(password));
-
-                try (ResultSet resultSet = pstmt.executeQuery()) {
-                    // Check if user credentials match
-                    if (resultSet.next()) {
-                        // Get user role from database
-                        String role = resultSet.getString("role");
-
-                        System.out.println("✅ Success! Welcome back, " + username + "!");
-
-                        // Show appropriate menu based on user role
-                        if (role.equals("ADMIN")) {
-                            showAdminMenu(username);
-                        } else {
-                            showUserMenu(username);
-                        }
-                    } else {
-                        System.out.println("❌ Error: Username or password incorrect. Please try again.");
-                    }
-                }
-            }
-
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to login user.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
-
-    /**
      * Displays the admin menu loop, allowing the logged-in admin to view
      * users, manage city resources, view system logs, or log out.
      *
      * @param username the username of the currently logged-in admin, used
-     *                  for display purposes
+     *                 for display purposes
      */
     public static void showAdminMenu(String username) {
+        LogoutCommand logoutCommand = new LogoutCommand();
+        adminMenuInvoker.registerCommand(4, logoutCommand);
+
         boolean inAdminMenu = true;
 
         while (inAdminMenu) {
             clearScreen();
+
             System.out.println("\n===== Admin Menu (User: " + username + ") =====");
             System.out.println("1. 👥 View all users");
             System.out.println("2. 🏗️ Manage city resources");
@@ -365,28 +346,15 @@ public class SmartCityApp {
             System.out.println("4. 🚪 Logout");
             System.out.print("Enter your choice: ");
 
-            int choice = scanner.nextInt();
-            scanner.nextLine(); // Clear newline from input buffer
+            try {
+                int choice = Integer.parseInt(scanner.nextLine());
+                adminMenuInvoker.executeCommand(choice);
 
-
-            
-            switch (choice) {
-                case 1:
-                    System.out.println("Viewing all registered users...");
-                    break;
-                case 2:
-                    // Manage city resources
-                    manageCityResources();
-                    break;
-                case 3:
-                    System.out.println("Displaying system logs...");
-                    break;
-                case 4:
-                    System.out.println("Logging out from admin account. Goodbye!");
+                if (logoutCommand.isLogoutRequested()) {
                     inAdminMenu = false;
-                    break;
-                default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("❌ Invalid choice. Please enter a number between 1 and 4.");
             }
         }
     }
@@ -397,50 +365,35 @@ public class SmartCityApp {
      * navigation, or log out.
      *
      * @param username the username of the currently logged-in user, used
-     *                  for display purposes
+     *                 for display purposes
      */
     public static void showUserMenu(String username) {
+        com.smartcity.commands.UserMenuComands.LogoutCommand logoutCommand = new com.smartcity.commands.UserMenuComands.LogoutCommand();
+
+        userMenuInvoker.registerCommand(5, logoutCommand);
+
         boolean inUserMenu = true;
 
         while (inUserMenu) {
             clearScreen();
+
             System.out.println("\n===== User Menu (User: " + username + ") =====");
             System.out.println("1. 🏙 Explore city attractions");
             System.out.println("2. 🔍 Search places");
             System.out.println("3. 📍 View nearby services");
             System.out.println("4. 🧭 Check navigation");
             System.out.println("5. 🚪 Logout");
-
             System.out.print("Enter your choice: ");
 
-            int choice = scanner.nextInt();
-            scanner.nextLine(); // Clear newline from input buffer
+            try {
+                int choice = Integer.parseInt(scanner.nextLine());
+                userMenuInvoker.executeCommand(choice);
 
-            switch (choice) {
-                case 1:
-                    // Display all city attractions
-                    viewAllPlaces();
-                    break;
-                // Display all city attractions sorted by ID
-                case 2:
-                    viewAllPlacesSortedById();
-                    break;
-                case 3:
-                    // Search for places
-                    searchPlacesMenu();
-                    break;
-                case 4:
-                    System.out.println("Finding nearby services...");
-                    break;
-                case 5:
-                    System.out.println("Opening navigation...");
-                    break;
-                case 6:
-                    System.out.println("Logging out. Goodbye!");
+                if (logoutCommand.isLogoutRequested()) {
                     inUserMenu = false;
-                    break;
-                default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("❌ Invalid choice. Please enter a number between 1 and 5.");
             }
         }
     }
@@ -486,198 +439,79 @@ public class SmartCityApp {
         }
     }
 
-    /**
-     * Queries the database for all places, ordered alphabetically by name,
-     * and prints them to standard output.
-     */
-    private static void viewAllPlaces() {
-        String query = "SELECT * FROM places ORDER BY name ASC";
+    // /**
+    //  * Prompts the user for a category keyword and queries the database for
+    //  * all places whose category contains that keyword (case-insensitive),
+    //  * printing the matching results.
+    //  */
+    // private static void searchByCategory() {
+    //     System.out.print("\nEnter category to search: ");
+    //     String searchCategory = scanner.nextLine();
 
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
+    //     try (Connection connection = getConnectionOrPrintError()) {
+    //         if (connection == null) {
+    //             return;
+    //         }
 
-            try (PreparedStatement pstmt = connection.prepareStatement(query);
-                 ResultSet resultSet = pstmt.executeQuery()) {
+    //         try (PreparedStatement pstmt = connection.prepareStatement(SEARCH_BY_CATEGORY_QUERY)) {
+    //             pstmt.setString(1, "%" + searchCategory + "%"); // Add wildcards for partial matching
 
-                // Display header
-                System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
-                System.out.println("-".repeat(50));
-                placeResultPrintout(resultSet);
-            }
+    //             try (ResultSet resultSet = pstmt.executeQuery()) {
+    //                 // Display search results
+    //                 System.out.println("\n🔍 Search Results for Category: " + searchCategory);
+    //                 System.out.println("-".repeat(50));
+    //                 placeResultPrintout(resultSet);
+    //             }
+    //         }
 
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to fetch places from database.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
+    //     } catch (SQLException e) {
+    //         System.out.println("❌ Error: Failed to search places by category.");
+    //         System.out.println("   Error message: " + e.getMessage());
+    //     }
+    // }
 
-    /**
-     * Queries the database for all places, ordered by their ID in ascending
-     * order, and prints them to standard output.
-     */
-    private static void viewAllPlacesSortedById() {
-        String query = "SELECT * FROM places ORDER BY id ASC";
+    
+    // /**
+    //  * Displays the admin's city-resource management submenu loop, allowing
+    //  * the admin to add, update, or delete a place, or go back to the
+    //  * previous menu.
+    //  */
+    // public static void manageCityResources() {
+    //     boolean inResourceMenu = true;
 
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
+    //     while (inResourceMenu) {
+    //         System.out.println("\n===== Manage City Resources =====");
+    //         System.out.println("1. ➕ Add new place");
+    //         System.out.println("2. ✏️ Update place");
+    //         System.out.println("3. 🗑️ Delete place");
+    //         System.out.println("4. ⬅️ Back");
+    //         System.out.print("Enter your choice: ");
 
-            try (PreparedStatement pstmt = connection.prepareStatement(query);
-                 ResultSet resultSet = pstmt.executeQuery()) {
+    //         int choice = scanner.nextInt();
+    //         scanner.nextLine(); // Clear newline from input buffer
 
-                System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS (BY ID) =====");
-                System.out.println("-".repeat(50));
-                placeResultPrintout(resultSet);
-            }
-
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to fetch places from database.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Displays the search submenu loop, allowing the user to search places
-     * by category, search by location, or go back to the previous menu.
-     */
-    private static void searchPlacesMenu() {
-        boolean inSearchMenu = true;
-
-        while (inSearchMenu) {
-            System.out.println("\n===== Search Places =====");
-            System.out.println("1. 🏷️ Search by category");
-            System.out.println("2. 📌 Search by location");
-            System.out.println("3. ⬅️ Back");
-            System.out.print("Enter your choice: ");
-
-            int choice = scanner.nextInt();
-            scanner.nextLine(); // Clear newline from input buffer
-
-            switch (choice) {
-                case 1:
-                    // Search places by category
-                    searchByCategory();
-                    break;
-                case 2:
-                    // Search places by location
-                    searchByLocation();
-                    break;
-                case 3:
-                    // Return to user menu
-                    inSearchMenu = false;
-                    break;
-                default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
-            }
-        }
-    }
-
-    /**
-     * Prompts the user for a category keyword and queries the database for
-     * all places whose category contains that keyword (case-insensitive),
-     * printing the matching results.
-     */
-    private static void searchByCategory() {
-        System.out.print("\nEnter category to search: ");
-        String searchCategory = scanner.nextLine();
-
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
-
-            try (PreparedStatement pstmt = connection.prepareStatement(SEARCH_BY_CATEGORY_QUERY)) {
-                pstmt.setString(1, "%" + searchCategory + "%"); // Add wildcards for partial matching
-
-                try (ResultSet resultSet = pstmt.executeQuery()) {
-                    // Display search results
-                    System.out.println("\n🔍 Search Results for Category: " + searchCategory);
-                    System.out.println("-".repeat(50));
-                    placeResultPrintout(resultSet);
-                }
-            }
-
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to search places by category.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Prompts the user for a location keyword and queries the database for
-     * all places whose location contains that keyword (case-insensitive),
-     * printing the matching results.
-     */
-    private static void searchByLocation() {
-        System.out.print("\nEnter location to search: ");
-        String searchLocation = scanner.nextLine();
-
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
-
-            try (PreparedStatement pstmt = connection.prepareStatement(SEARCH_BY_LOCATION_QUERY)) {
-                pstmt.setString(1, "%" + searchLocation + "%"); // Add wildcards for partial matching
-
-                try (ResultSet resultSet = pstmt.executeQuery()) {
-                    // Display search results
-                    System.out.println("\n🔍 Search Results for Location: " + searchLocation);
-                    System.out.println("-".repeat(50));
-                    placeResultPrintout(resultSet);
-                }
-            }
-
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to search places by location.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Displays the admin's city-resource management submenu loop, allowing
-     * the admin to add, update, or delete a place, or go back to the
-     * previous menu.
-     */
-    public static void manageCityResources() {
-        boolean inResourceMenu = true;
-
-        while (inResourceMenu) {
-            System.out.println("\n===== Manage City Resources =====");
-            System.out.println("1. ➕ Add new place");
-            System.out.println("2. ✏️ Update place");
-            System.out.println("3. 🗑️ Delete place");
-            System.out.println("4. ⬅️ Back");
-            System.out.print("Enter your choice: ");
-
-            int choice = scanner.nextInt();
-            scanner.nextLine(); // Clear newline from input buffer
-
-            switch (choice) {
-                case 1:
-                    // Add a new place to the system
-                    addNewPlace();
-                    break;
-                case 2:
-                    // Update an existing place
-                    updatePlace();
-                    break;
-                case 3:
-                    // Delete a place from the system
-                    deletePlace();
-                    break;
-                case 4:
-                    // Return to admin menu
-                    inResourceMenu = false;
-                    break;
-                default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
-            }
-        }
-    }
+    //         switch (choice) {
+    //             case 1:
+    //                 // Add a new place to the system
+    //                 addNewPlace();
+    //                 break;
+    //             case 2:
+    //                 // Update an existing place
+    //                 updatePlace();
+    //                 break;
+    //             case 3:
+    //                 // Delete a place from the system
+    //                 deletePlace();
+    //                 break;
+    //             case 4:
+    //                 // Return to admin menu
+    //                 inResourceMenu = false;
+    //                 break;
+    //             default:
+    //                 System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
+    //         }
+    //     }
+    // }
 
     /**
      * Prompts the admin for a new place's ID, name, category, location,
@@ -789,199 +623,201 @@ public class SmartCityApp {
         }
     }
 
-    /**
-     * Prompts the admin for a place ID, fetches the existing place details,
-     * allows the admin to optionally overwrite any field (pressing Enter
-     * keeps the current value), validates the new values, and updates the
-     * place in the database.
-     */
-    private static void updatePlace() {
-        System.out.println("\n--- Update Place ---");
 
-        System.out.print("Enter place ID to update: ");
-        int placeId;
-        try {
-            placeId = scanner.nextInt();
-            scanner.nextLine();
-        } catch (InputMismatchException e) {
-            System.out.println("❌ Invalid ID. Please enter a number.");
-            scanner.nextLine();
-            return;
-        }
+    // /**
+    //  * Prompts the admin for a place ID, fetches the existing place details,
+    //  * allows the admin to optionally overwrite any field (pressing Enter
+    //  * keeps the current value), validates the new values, and updates the
+    //  * place in the database.
+    //  */
+    // private static void updatePlace() {
+    //     System.out.println("\n--- Update Place ---");
 
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
+    //     System.out.print("Enter place ID to update: ");
+    //     int placeId;
+    //     try {
+    //         placeId = scanner.nextInt();
+    //         scanner.nextLine();
+    //     } catch (InputMismatchException e) {
+    //         System.out.println("❌ Invalid ID. Please enter a number.");
+    //         scanner.nextLine();
+    //         return;
+    //     }
 
-            // Fetch existing place
-            String currentName, currentCategory, currentLocation, currentDescription;
-            double currentLatitude, currentLongitude;
-            try (PreparedStatement selectPstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
-                selectPstmt.setInt(1, placeId);
-                try (ResultSet rs = selectPstmt.executeQuery()) {
-                    if (!rs.next()) {
-                        System.out.println("❌ Error: Place with ID " + placeId + " not found.");
-                        return;
-                    }
+    //     try (Connection connection = getConnectionOrPrintError()) {
+    //         if (connection == null) {
+    //             return;
+    //         }
 
-                    currentName = rs.getString("name");
-                    currentCategory = rs.getString("category");
-                    currentLocation = rs.getString("location");
-                    currentDescription = rs.getString("description");
-                    currentLatitude = rs.getDouble("latitude");
-                    currentLongitude = rs.getDouble("longitude");
-                }
-            }
+    //         // Fetch existing place
+    //         String currentName, currentCategory, currentLocation, currentDescription;
+    //         double currentLatitude, currentLongitude;
+    //         try (PreparedStatement selectPstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
+    //             selectPstmt.setInt(1, placeId);
+    //             try (ResultSet rs = selectPstmt.executeQuery()) {
+    //                 if (!rs.next()) {
+    //                     System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+    //                     return;
+    //                 }
 
-            System.out.println("\nCurrent details:");
-            System.out.println("Name: " + currentName);
-            System.out.println("Category: " + currentCategory);
-            System.out.println("Location: " + currentLocation);
-            System.out.println("Description: " + currentDescription);
-            System.out.println("Coordinates: " + currentLatitude + ", " + currentLongitude);
+    //                 currentName = rs.getString("name");
+    //                 currentCategory = rs.getString("category");
+    //                 currentLocation = rs.getString("location");
+    //                 currentDescription = rs.getString("description");
+    //                 currentLatitude = rs.getDouble("latitude");
+    //                 currentLongitude = rs.getDouble("longitude");
+    //             }
+    //         }
 
-            double newLatitude = currentLatitude;
-            double newLongitude = currentLongitude;
+    //         System.out.println("\nCurrent details:");
+    //         System.out.println("Name: " + currentName);
+    //         System.out.println("Category: " + currentCategory);
+    //         System.out.println("Location: " + currentLocation);
+    //         System.out.println("Description: " + currentDescription);
+    //         System.out.println("Coordinates: " + currentLatitude + ", " + currentLongitude);
 
-            // Take new inputs
-            System.out.print("\nEnter new name (or press Enter to keep current): ");
-            String newName = scanner.nextLine();
+    //         double newLatitude = currentLatitude;
+    //         double newLongitude = currentLongitude;
 
-            System.out.print("Enter new category (or press Enter to keep current): ");
-            String newCategory = scanner.nextLine();
+    //         // Take new inputs
+    //         System.out.print("\nEnter new name (or press Enter to keep current): ");
+    //         String newName = scanner.nextLine();
 
-            System.out.print("Enter new location (or press Enter to keep current): ");
-            String newLocation = scanner.nextLine();
+    //         System.out.print("Enter new category (or press Enter to keep current): ");
+    //         String newCategory = scanner.nextLine();
 
-            System.out.print("Enter new description (or press Enter to keep current): ");
-            String newDescription = scanner.nextLine();
+    //         System.out.print("Enter new location (or press Enter to keep current): ");
+    //         String newLocation = scanner.nextLine();
 
-            System.out.print("Enter new latitude (or press Enter to keep current): ");
-            String newLatitudeString = scanner.nextLine();
+    //         System.out.print("Enter new description (or press Enter to keep current): ");
+    //         String newDescription = scanner.nextLine();
 
-            System.out.print("Enter new longitude (or press Enter to keep current): ");
-            String newLongitudeString = scanner.nextLine();
+    //         System.out.print("Enter new latitude (or press Enter to keep current): ");
+    //         String newLatitudeString = scanner.nextLine();
 
-            // Use old values if input is empty
-            if (newName.isEmpty()) {
-                newName = currentName;
-            }
-            if (newCategory.isEmpty()) {
-                newCategory = currentCategory;
-            }
-            if (newLocation.isEmpty()) {
-                newLocation = currentLocation;
-            }
-            if (newDescription.isEmpty()) {
-                newDescription = currentDescription;
-            }
-            if (newLatitudeString.isEmpty()) {
-                newLatitude = currentLatitude;
-            }
-            if (newLongitudeString.isEmpty()) {
-                newLongitude = currentLongitude;
-            }
+    //         System.out.print("Enter new longitude (or press Enter to keep current): ");
+    //         String newLongitudeString = scanner.nextLine();
 
-            // 🔥 VALIDATION
-            if (newName == null || newName.trim().isEmpty()) {
-                System.out.println("❌ Error: Place name cannot be empty.");
-                return;
-            }
+    //         // Use old values if input is empty
+    //         if (newName.isEmpty()) {
+    //             newName = currentName;
+    //         }
+    //         if (newCategory.isEmpty()) {
+    //             newCategory = currentCategory;
+    //         }
+    //         if (newLocation.isEmpty()) {
+    //             newLocation = currentLocation;
+    //         }
+    //         if (newDescription.isEmpty()) {
+    //             newDescription = currentDescription;
+    //         }
+    //         if (newLatitudeString.isEmpty()) {
+    //             newLatitude = currentLatitude;
+    //         }
+    //         if (newLongitudeString.isEmpty()) {
+    //             newLongitude = currentLongitude;
+    //         }
 
-            if (newLocation == null || newLocation.trim().isEmpty()) {
-                System.out.println("❌ Error: Location cannot be empty.");
-                return;
-            }
+    //         // 🔥 VALIDATION
+    //         if (newName == null || newName.trim().isEmpty()) {
+    //             System.out.println("❌ Error: Place name cannot be empty.");
+    //             return;
+    //         }
 
-            if (newCategory == null || newCategory.trim().isEmpty()) {
-                System.out.println("❌ Error: Category cannot be empty.");
-                return;
-            }
+    //         if (newLocation == null || newLocation.trim().isEmpty()) {
+    //             System.out.println("❌ Error: Location cannot be empty.");
+    //             return;
+    //         }
 
-            if (!newLatitudeString.trim().isEmpty()) {
-                try {
-                    newLatitude = Double.parseDouble(newLatitudeString);
-                } catch (NumberFormatException e) {
-                    System.out.println("❌ Error: Latitude is not a valid number.");
-                    return;
-                }
-            }
+    //         if (newCategory == null || newCategory.trim().isEmpty()) {
+    //             System.out.println("❌ Error: Category cannot be empty.");
+    //             return;
+    //         }
 
-            if (!newLongitudeString.trim().isEmpty()) {
-                try {
-                    newLongitude = Double.parseDouble(newLongitudeString);
-                } catch (NumberFormatException e) {
-                    System.out.println("❌ Error: Longitude is not a valid number.");
-                    return;
-                }
-            }
+    //         if (!newLatitudeString.trim().isEmpty()) {
+    //             try {
+    //                 newLatitude = Double.parseDouble(newLatitudeString);
+    //             } catch (NumberFormatException e) {
+    //                 System.out.println("❌ Error: Latitude is not a valid number.");
+    //                 return;
+    //             }
+    //         }
 
-            try (PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PLACE_QUERY)) {
-                updatePstmt.setString(1, newName);
-                updatePstmt.setString(2, newCategory);
-                updatePstmt.setString(3, newLocation);
-                updatePstmt.setString(4, newDescription);
-                updatePstmt.setDouble(5, newLatitude);
-                updatePstmt.setDouble(6, newLongitude);
-                updatePstmt.setInt(7, placeId);
+    //         if (!newLongitudeString.trim().isEmpty()) {
+    //             try {
+    //                 newLongitude = Double.parseDouble(newLongitudeString);
+    //             } catch (NumberFormatException e) {
+    //                 System.out.println("❌ Error: Longitude is not a valid number.");
+    //                 return;
+    //             }
+    //         }
 
-                int rows = updatePstmt.executeUpdate();
+    //         try (PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_PLACE_QUERY)) {
+    //             updatePstmt.setString(1, newName);
+    //             updatePstmt.setString(2, newCategory);
+    //             updatePstmt.setString(3, newLocation);
+    //             updatePstmt.setString(4, newDescription);
+    //             updatePstmt.setDouble(5, newLatitude);
+    //             updatePstmt.setDouble(6, newLongitude);
+    //             updatePstmt.setInt(7, placeId);
 
-                if (rows > 0) {
-                    System.out.println("✅ Success! Place updated successfully.");
-                } else {
-                    System.out.println("❌ Error: Update failed.");
-                }
-            }
+    //             int rows = updatePstmt.executeUpdate();
 
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to update place.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
+    //             if (rows > 0) {
+    //                 System.out.println("✅ Success! Place updated successfully.");
+    //             } else {
+    //                 System.out.println("❌ Error: Update failed.");
+    //             }
+    //         }
 
-    /**
-     * Prompts the admin for a place ID and deletes the corresponding place
-     * from the database, if it exists.
-     */
-    private static void deletePlace() {
-        System.out.println("\n--- Delete Place ---");
+    //     } catch (SQLException e) {
+    //         System.out.println("❌ Error: Failed to update place.");
+    //         System.out.println("   Error message: " + e.getMessage());
+    //     }
+    // }
 
-        // Ask admin for place ID to delete
-        System.out.print("Enter place ID to delete: ");
-        int placeId;
-        try {
-            placeId = scanner.nextInt();
-            scanner.nextLine();
-        } catch (InputMismatchException e) {
-            System.out.println("❌ Invalid ID. Please enter a number.");
-            scanner.nextLine(); // Clear newline from input buffer
-            return;
-        }
 
-        try (Connection connection = SmartCityApp.getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
+    // /**
+    //  * Prompts the admin for a place ID and deletes the corresponding place
+    //  * from the database, if it exists.
+    //  */
+    // private static void deletePlace() {
+    //     System.out.println("\n--- Delete Place ---");
 
-            try (PreparedStatement pstmt = connection.prepareStatement(DELETE_PLACE_QUERY)) {
-                pstmt.setInt(1, placeId);
+    //     // Ask admin for place ID to delete
+    //     System.out.print("Enter place ID to delete: ");
+    //     int placeId;
+    //     try {
+    //         placeId = scanner.nextInt();
+    //         scanner.nextLine();
+    //     } catch (InputMismatchException e) {
+    //         System.out.println("❌ Invalid ID. Please enter a number.");
+    //         scanner.nextLine(); // Clear newline from input buffer
+    //         return;
+    //     }
 
-                int rowsAffected = pstmt.executeUpdate();
+    //     try (Connection connection = SmartCityApp.getConnectionOrPrintError()) {
+    //         if (connection == null) {
+    //             return;
+    //         }
 
-                if (rowsAffected > 0) {
-                    System.out.println("✅ Success! Place with ID " + placeId + " has been deleted.");
-                } else {
-                    System.out.println("❌ Error: Place with ID " + placeId + " not found.");
-                }
-            }
+    //         try (PreparedStatement pstmt = connection.prepareStatement(DELETE_PLACE_QUERY)) {
+    //             pstmt.setInt(1, placeId);
 
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to delete place from database.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
+    //             int rowsAffected = pstmt.executeUpdate();
+
+    //             if (rowsAffected > 0) {
+    //                 System.out.println("✅ Success! Place with ID " + placeId + " has been deleted.");
+    //             } else {
+    //                 System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+    //             }
+    //         }
+
+    //     } catch (SQLException e) {
+    //         System.out.println("❌ Error: Failed to delete place from database.");
+    //         System.out.println("   Error message: " + e.getMessage());
+    //     }
+    // }
 
     /**
      * Validates that a place name is not null or blank.
@@ -1018,6 +854,7 @@ public class SmartCityApp {
         System.out.print("\033[H\033[2J");
         System.out.flush();
     }
+
     public static boolean isValidCategory(String category) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'isValidCategory'");
