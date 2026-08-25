@@ -85,7 +85,7 @@ public class SmartCityApp {
      *
      * @return a valid {@link Connection}, or {@code null} if the connection failed
      */
-    private static Connection getConnectionOrPrintError() {
+    public static Connection getConnectionOrPrintError() {
         Connection conn = DBConnection.getConnection();
         if (conn == null) {
             System.out.println("❌ Could not connect to the database.");
@@ -960,7 +960,7 @@ public class SmartCityApp {
             return;
         }
 
-        try (Connection connection = getConnectionOrPrintError()) {
+        try (Connection connection = SmartCityApp.getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
@@ -990,7 +990,7 @@ public class SmartCityApp {
      * @return true if the name is non-null and contains non-whitespace
      *         characters, false otherwise
      */
-    private static boolean isValidPlaceName(String name) {
+    public static boolean isValidPlaceName(String name) {
         return name != null && !name.trim().isEmpty();
     }
 
@@ -1001,7 +1001,7 @@ public class SmartCityApp {
      * @return true if the location is non-null and contains non-whitespace
      *         characters, false otherwise
      */
-    private static boolean isValidLocation(String location) {
+    public static boolean isValidLocation(String location) {
         return location != null && !location.trim().isEmpty();
     }
 
@@ -1017,5 +1017,9 @@ public class SmartCityApp {
     public static void clearScreen() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
+    }
+    public static boolean isValidCategory(String category) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'isValidCategory'");
     }
 }

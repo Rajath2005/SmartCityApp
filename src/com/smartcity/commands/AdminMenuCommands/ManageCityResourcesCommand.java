@@ -14,9 +14,9 @@ public class ManageCityResourcesCommand implements Command {
         this.scanner = scanner;
         this.resourceMenuInvoker = new CommandInvoker(scanner);
 
-        resourceMenuInvoker.registerCommand(1, new AddPlaceCommand());
-        resourceMenuInvoker.registerCommand(2, new UpdatePlaceCommand());
-        resourceMenuInvoker.registerCommand(3, new DeletePlaceCommand());
+        resourceMenuInvoker.registerCommand(1, new AddPlaceCommand(scanner));
+        resourceMenuInvoker.registerCommand(2, new UpdatePlaceCommand(scanner));
+        resourceMenuInvoker.registerCommand(3, new DeletePlaceCommand(scanner));
         //resourceMenuInvoker.registerCommand(4, new BackCommand());
     }
 
