@@ -415,7 +415,9 @@ public class SmartCityApp {
             System.out.println("2. 🔍 Search places");
             System.out.println("3. 📍 View nearby services");
             System.out.println("4. 🧭 Check navigation");
-            System.out.println("5. 🚪 Logout");
+            System.out.println("5. ⭐ Add place to favourites");
+            System.out.println("6. 📋 View my favourites");
+            System.out.println("7. 🚪 Logout");
 
             System.out.print("Enter your choice: ");
 
@@ -441,12 +443,18 @@ public class SmartCityApp {
                 case 5:
                     System.out.println("Opening navigation...");
                     break;
-                case 6:
-                    System.out.println("Logging out. Goodbye!");
-                    inUserMenu = false;
-                    break;
+            case 6:
+                addToFavourites(username);
+                break;
+            case 7:
+                viewFavourites(username);
+                break;
+            case 8:
+                System.out.println("Logging out. Goodbye!");
+                inUserMenu = false;
+                break;
                 default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
+                                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 8.");
             }
         }
     }
@@ -1023,5 +1031,74 @@ public class SmartCityApp {
     public static void clearScreen() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
+    }
+
+    /**
+     * Prompts the user for a Place ID and saves it to their favourites list.
+     * Handles duplicate favourites gracefully.
+     *
+     * @param username the username of the currently logged-in user
+     */
+    private static void addToFavourites(String username) {
+        System.out.print("Enter the Place ID to save: ");
+        int placeId;
+        try {
+            placeId = Integer.parseInt(scanner.nextLine().trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid Place ID. Please enter a numeric value.");
+            return;
+        }
+
+        try (Connection conn = getConnectionOrPrintError()) {
+            if (conn == null) {
+                return;
+            }
+            try (PreparedStatement checkStmt = conn.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
+                checkStmt.setInt(1, placeId);
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (!rs.next()) {
+                        System.out.println("No place found with ID " + placeId + ".");
+                        return;
+                    }
+                }
+            }
+
+            String insertSql = "INSERT INTO favourites (username, place_id) VALUES (?, ?)";
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+                insertStmt.setString(1, username);
+                insertStmt.setInt(2, placeId);
+                insertStmt.executeUpdate();
+                System.out.println("Place added to your favourites!");
+            }
+        } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("duplicate")) {
+                System.out.println("You've already saved this place to your favourites.");
+            } else {
+                System.out.println("Error adding to favourites: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Displays all places the given user has saved to their favourites.
+     *
+     * @param username the username of the currently logged-in user
+     */
+    private static void viewFavourites(String username) {
+        String sql = "SELECT p.* FROM places p JOIN favourites f ON p.id = f.place_id WHERE f.username = ?";
+        try (Connection conn = getConnectionOrPrintError()) {
+            if (conn == null) {
+                return;
+            }
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, username);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    System.out.println("\n\u2b50 ===== MY FAVOURITE PLACES =====");
+                    placeResultPrintout(rs);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error retrieving favourites: " + e.getMessage());
+        }
     }
 }
