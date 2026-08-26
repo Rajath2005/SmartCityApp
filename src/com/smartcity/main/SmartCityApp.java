@@ -6,11 +6,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.InputMismatchException;
 import java.util.Scanner;
 
 import com.smartcity.commands.CommandInvoker;
-import com.smartcity.commands.Command;
 import com.smartcity.commands.AdminMenuCommands.LogoutCommand;
 import com.smartcity.commands.AdminMenuCommands.ManageCityResourcesCommand;
 import com.smartcity.commands.AdminMenuCommands.ViewSystemLogsCommand;
@@ -21,11 +19,8 @@ import com.smartcity.commands.MainMenuCommands.RegisterCommand;
 import com.smartcity.commands.UserMenuComands.ExploreCityAttractionsCommand;
 import com.smartcity.commands.UserMenuComands.NavigationCommand;
 import com.smartcity.commands.UserMenuComands.NearbyServicesCommand;
-import com.smartcity.commands.UserMenuComands.SearchByCategoryCommand;
-import com.smartcity.commands.UserMenuComands.SearchByLocationCommand;
 import com.smartcity.commands.UserMenuComands.SearchPlacesCommand;
 import com.smartcity.db.DBConnection;
-import com.smartcity.service.EmailService;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -52,10 +47,6 @@ public class SmartCityApp {
     private static final String UPDATE_PASSWORD_QUERY = "UPDATE users SET password = ? WHERE id = ?";
 
     private static final String SHA256_HEX_PATTERN = "^[a-f0-9]{64}$";
-
-    private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
-
-    private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
 
     private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
@@ -239,86 +230,6 @@ public class SmartCityApp {
             }
         } catch (SQLException e) {
             System.out.println("❌ Error: Failed to migrate plaintext passwords.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Registers a new user by validating the provided credentials,
-     * ensuring the username is unique, and storing the user in the database.
-     */
-    private static void register() {
-        System.out.println("\n--- Registration ---");
-
-        // Get and validate username
-        System.out.print("Enter username (4-20 alphanumeric characters): ");
-        String username = scanner.nextLine();
-
-        // When the username the user chooses is invalid, this activates
-        while (!isValidUsername(username)) {
-            System.out.println("Invalid username. Please try again.");
-            // It allows the user to retry again, and if they're successful the loop stops
-            System.out.print("Enter username (4-20 alphanumeric characters): ");
-            username = scanner.nextLine();
-        }
-
-        // Get and validate password BEFORE hitting the database
-        System.out.print("Enter password (min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char): ");
-        String password = scanner.nextLine();
-
-        // When the password the user chooses is invalid, this activates
-        while (password.length() < 8 || !isValidPassword(password)) {
-            if (password.length() < 8) {
-                System.out.println("Password is too short. Minimum 8 characters required.");
-            } else {
-                System.out.println("Invalid password. Please try again.");
-            }
-            // It allows the user to retry again, and if they're succesful the loop stops
-            System.out.print("Enter password (min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char): ");
-            password = scanner.nextLine();
-        }
-        System.out.println("Enter your email:");
-        String email = scanner.nextLine();
-        while (!isValidEmail(email)) {
-            System.out.println("Invalid Email. Please try again.");
-            email = scanner.nextLine();
-        }
-
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
-
-            // Check if the username already exists
-            try (PreparedStatement checkPstmt = connection.prepareStatement(CHECK_USERNAME_EXISTS_QUERY)) {
-                checkPstmt.setString(1, username);
-                try (ResultSet resultSet = checkPstmt.executeQuery()) {
-                    if (resultSet.next()) {
-                        System.out.println("❌ Error: Username already exists. Please choose a different username.");
-                        return;
-                    }
-                }
-            }
-
-            // Insert new user
-            try (PreparedStatement insertPstmt = connection.prepareStatement(INSERT_USER_QUERY)) {
-                insertPstmt.setString(1, username);
-                insertPstmt.setString(2, hashPassword(password));
-                insertPstmt.setString(3, email);
-                insertPstmt.setString(4, "USER"); // Default role for new users
-
-                int rowsAffected = insertPstmt.executeUpdate();
-
-                if (rowsAffected > 0) {
-                    EmailService.sendWelcomeEmail(email, username);
-                    System.out.println("✅ Success! User '" + username + "' registered successfully.");
-                } else {
-                    System.out.println("❌ Error: Failed to register user. Please try again.");
-                }
-            }
-
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to register user.");
             System.out.println("   Error message: " + e.getMessage());
         }
     }
@@ -513,115 +424,7 @@ public class SmartCityApp {
     //     }
     // }
 
-    /**
-     * Prompts the admin for a new place's ID, name, category, location,
-     * description, latitude, and longitude, validates the input, and
-     * inserts the new place into the database.
-     */
-    private static void addNewPlace() {
-        System.out.println("\n--- Add New Place ---");
-
-        // Get place ID
-        System.out.print("Enter place ID: ");
-        int id;
-        try {
-            id = scanner.nextInt();
-            scanner.nextLine();
-        } catch (InputMismatchException e) {
-            System.out.println("❌ Invalid ID. Please enter a number.");
-            scanner.nextLine(); // Clear newline from input buffer
-            return;
-        }
-
-        // Get place name
-        System.out.print("Enter place name: ");
-        String name = scanner.nextLine();
-
-        // If it's not valid, then the user can try again
-        while (!isValidPlaceName(name)) {
-            System.out.println("❌ Error: Place name cannot be empty.");
-            System.out.print("Enter place name: ");
-            name = scanner.nextLine();
-        }
-
-        // Get place category
-        System.out.print("Enter category (e.g., Hotel, Restaurant, Park): ");
-        String category = scanner.nextLine();
-
-        // If it's not valid, then the user can try again
-        while (category == null || category.trim().isEmpty()) {
-            System.out.println("❌ Error: Category cannot be empty.");
-            System.out.print("Enter category (e.g., Hotel, Restaurant, Park): ");
-            category = scanner.nextLine();
-        }
-
-        // Get place location
-        System.out.print("Enter location: ");
-        String location = scanner.nextLine();
-
-        // If it's not valid, then the user can try again
-        while (!isValidLocation(location)) {
-            System.out.println("❌ Error: Location cannot be empty.");
-            System.out.print("Enter location: ");
-            location = scanner.nextLine();
-        }
-
-        // Get place description
-        System.out.print("Enter description: ");
-        String description = scanner.nextLine();
-
-        // Get place latitude
-        System.out.print("Enter place latitude: ");
-        double latitude;
-        try {
-            latitude = scanner.nextDouble();
-            scanner.nextLine();
-        } catch (InputMismatchException e) {
-            System.out.println("❌ Invalid latitude. Please enter a valid number.");
-            scanner.nextLine(); // Clear newline from input buffer
-            return;
-        }
-
-        // Get place longitude
-        System.out.print("Enter place longitude: ");
-        double longitude;
-        try {
-            longitude = scanner.nextDouble();
-            scanner.nextLine();
-        } catch (InputMismatchException e) {
-            System.out.println("❌ Invalid longitude. Please enter a valid number.");
-            scanner.nextLine(); // Clear newline from input buffer
-            return;
-        }
-
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
-
-            try (PreparedStatement pstmt = connection.prepareStatement(INSERT_PLACE_QUERY)) {
-                pstmt.setInt(1, id);
-                pstmt.setString(2, name);
-                pstmt.setString(3, category);
-                pstmt.setString(4, location);
-                pstmt.setString(5, description);
-                pstmt.setDouble(6, latitude);
-                pstmt.setDouble(7, longitude);
-
-                int rowsAffected = pstmt.executeUpdate();
-
-                if (rowsAffected > 0) {
-                    System.out.println("✅ Success! Place '" + name + "' has been added to the city.");
-                } else {
-                    System.out.println("❌ Error: Failed to add place. Please try again.");
-                }
-            }
-
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to add new place to database.");
-            System.out.println("   Error message: " + e.getMessage());
-        }
-    }
+    
 
 
     // /**
