@@ -6,12 +6,17 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.InputMismatchException;
+import java.util.List;
 import java.util.Scanner;
 
 import com.smartcity.db.DBConnection;
+import com.smartcity.model.Place;
 import com.smartcity.service.EmailService;
 import com.smartcity.util.ValidationUtils;
+import com.smartcity.structures.Comparators;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -384,9 +389,11 @@ public class SmartCityApp {
             System.out.println("\n===== User Menu (User: " + username + ") =====");
             System.out.println("1. 🏙 Explore city attractions");
             System.out.println("2. 🔍 Search places");
-            System.out.println("3. 📍 View nearby services");
-            System.out.println("4. 🧭 Check navigation");
-            System.out.println("5. 🚪 Logout");
+            System.out.println("3. 📍 View all places sorted by ID");
+            System.out.println("4. 🧭 Sort places by name/category");
+            System.out.println("5. 🚪 View nearby services");
+            System.out.println("6. 🗺️ Check navigation");
+            System.out.println("7. 🔒 Logout");
 
             System.out.print("Enter your choice: ");
 
@@ -398,21 +405,24 @@ public class SmartCityApp {
                     // Display all city attractions
                     viewAllPlaces();
                     break;
-                // Display all city attractions sorted by ID
                 case 2:
-                    viewAllPlacesSortedById();
-                    break;
-                case 3:
                     // Search for places
                     searchPlacesMenu();
                     break;
+                case 3:
+                    // Display all city attractions sorted by ID
+                    viewAllPlacesSortedById();
+                    break;
                 case 4:
-                    System.out.println("Finding nearby services...");
+                    viewAllPlacesWithSort();
                     break;
                 case 5:
-                    System.out.println("Opening navigation...");
+                    System.out.println("Finding nearby services...");
                     break;
                 case 6:
+                    System.out.println("Opening navigation...");
+                    break;
+                case 7:
                     System.out.println("Logging out. Goodbye!");
                     inUserMenu = false;
                     break;
@@ -516,6 +526,67 @@ public class SmartCityApp {
         }
     }
 
+    /**
+     * Queries the database for all places, ordered by name or category,
+     * and prints them to standard output.
+     */
+    private static void viewAllPlacesWithSort() {
+        List<Place> places = fetchAllPlaces();
+
+        System.out.println("\nSort by: [1] Name  [2] Category");
+        int choice = scanner.nextInt();
+        scanner.nextLine();
+
+        if (choice == 1) {
+            Collections.sort(places, Comparators.byName());
+        } else if (choice == 2) {
+            Collections.sort(places, Comparators.byCategory());
+        } else {
+            System.out.println("Invalid sort option.");
+            return;
+        }
+                
+        for (Place p : places) {
+            System.out.println("\n📍 Place ID: " + p.getId());
+            System.out.println("   Name: " + p.getName());
+            System.out.println("   Category: " + p.getCategory());
+            System.out.println("   Location: " + p.getLocation());
+            System.out.println("   Description: " + p.getDescription());
+            System.out.println("   Coordinates " + p.getLatitude() + ", " + p.getLongitude());            
+        }
+    }
+    /**
+     * Queries the database for all places and convert from ResultSet 
+     * to List<Place>.
+     */
+    private static List<Place> fetchAllPlaces() {
+        List<Place> places = new ArrayList<>();
+
+        String query = "SELECT * FROM places";
+        try (Connection connection = getConnectionOrPrintError()){
+            if (connection == null) {
+                return places;
+            }
+            try (PreparedStatement pstmt = connection.prepareStatement(query);
+                 ResultSet resultSet = pstmt.executeQuery()) {
+                while (resultSet.next()) {
+                    places.add(new Place(
+                        resultSet.getInt("id"),
+                        resultSet.getString("name"),
+                        resultSet.getString("category"),
+                        resultSet.getString("location"),
+                        resultSet.getString("description"),
+                        resultSet.getDouble("latitude"),
+                        resultSet.getDouble("longitude")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch places from database.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+        return places;
+    }
     /**
      * Displays the search submenu loop, allowing the user to search places
      * by category, search by location, or go back to the previous menu.
