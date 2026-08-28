@@ -13,6 +13,7 @@ import com.smartcity.db.DBConnection;
 import com.smartcity.service.EmailService;
 import com.smartcity.structures.RecentlyViewedManager;
 import java.util.List;
+import com.smartcity.util.ValidationUtils;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -85,7 +86,7 @@ public class SmartCityApp {
                     isRunning = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
             }
         }
 
@@ -121,36 +122,6 @@ public class SmartCityApp {
         System.out.println("2. 🔑 Login");
         System.out.println("3. 🚪 Exit");
         System.out.print("Enter your choice: ");
-    }
-
-    /**
-     * Validates that a username meets the required format.
-     *
-     * @param username the username string to validate
-     * @return true if valid (4-20 alphanumeric characters), false otherwise
-     */
-    private static boolean isValidUsername(String username) {
-        if (username == null || username.isEmpty()) {
-            return false;
-        }
-        String regex = "^[a-zA-Z0-9]{4,20}$";
-        return username.matches(regex);
-    }
-
-    /**
-     * Validates that a password meets the required strength rules.
-     *
-     * @param password the password string to validate
-     * @return true if valid (minimum 8 characters containing at least one
-     *         uppercase letter, one lowercase letter, one digit, and one
-     *         special character), false otherwise
-     */
-    private static boolean isValidPassword(String password) {
-        if (password == null || password.isEmpty()) {
-            return false;
-        }
-        String regex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
-        return password.matches(regex);
     }
 
     //Method to validate the email
@@ -237,7 +208,7 @@ public class SmartCityApp {
         String username = scanner.nextLine();
 
         // When the username the user chooses is invalid, this activates
-        while (!isValidUsername(username)) {
+        while (!ValidationUtils.isValidUsername(username)) {
             System.out.println("Invalid username. Please try again.");
             // It allows the user to retry again, and if they're successful the loop stops
             System.out.print("Enter username (4-20 alphanumeric characters): ");
@@ -249,7 +220,7 @@ public class SmartCityApp {
         String password = scanner.nextLine();
 
         // When the password the user chooses is invalid, this activates
-        while (password.length() < 8 || !isValidPassword(password)) {
+        while (password.length() < 8 || !ValidationUtils.isValidPassword(password)) {
             if (password.length() < 8) {
                 System.out.println("Password is too short. Minimum 8 characters required.");
             } else {
@@ -397,7 +368,7 @@ public class SmartCityApp {
                     inAdminMenu = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
             }
         }
     }
@@ -458,7 +429,7 @@ public class SmartCityApp {
                     inUserMenu = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
             }
         }
     }
@@ -673,7 +644,7 @@ public class SmartCityApp {
                     inSearchMenu = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
             }
         }
     }
@@ -777,7 +748,7 @@ public class SmartCityApp {
                     inResourceMenu = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
             }
         }
     }
