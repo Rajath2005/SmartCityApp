@@ -19,7 +19,9 @@ public class Comparators {
      * @return Comparator<Place> comparing by name
      */
     public static Comparator<Place> byName() {
-        return Comparator.comparing(Place::getName);
+        return Comparator.comparing(Place::getName,
+            Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+        );
     }
     
     /**
@@ -28,7 +30,8 @@ public class Comparators {
      * @return Comparator<Place> comparing by category, then name
      */
     public static Comparator<Place> byCategory() {
-        return Comparator.comparing(Place::getCategory)
-            .thenComparing(Place::getName);
+        return Comparator.comparing(Place::getCategory, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+            .thenComparing(Place::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+            );
     }
 }
