@@ -16,6 +16,7 @@ import java.util.Scanner;
 import com.smartcity.db.DBConnection;
 import com.smartcity.model.Place;
 import com.smartcity.service.EmailService;
+import com.smartcity.util.ValidationUtils;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -447,36 +448,6 @@ public class SmartCityApp {
         return isWide ? 2 : 1;
     }
 
-    /**
-     * Validates that a username meets the required format.
-     *
-     * @param username the username string to validate
-     * @return true if valid (4-20 alphanumeric characters), false otherwise
-     */
-    private static boolean isValidUsername(String username) {
-        if (username == null || username.isEmpty()) {
-            return false;
-        }
-        String regex = "^[a-zA-Z0-9]{4,20}$";
-        return username.matches(regex);
-    }
-
-    /**
-     * Validates that a password meets the required strength rules.
-     *
-     * @param password the password string to validate
-     * @return true if valid (minimum 8 characters containing at least one
-     *         uppercase letter, one lowercase letter, one digit, and one
-     *         special character), false otherwise
-     */
-    private static boolean isValidPassword(String password) {
-        if (password == null || password.isEmpty()) {
-            return false;
-        }
-        String regex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
-        return password.matches(regex);
-    }
-
     //Method to validate the email
     private static boolean isValidEmail(String email) {
         if (email == null || email.isEmpty()) {
@@ -561,7 +532,7 @@ public class SmartCityApp {
         String username = scanner.nextLine();
 
         // When the username the user chooses is invalid, this activates
-        while (!isValidUsername(username)) {
+        while (!ValidationUtils.isValidUsername(username)) {
             System.out.println("Invalid username. Please try again.");
             // It allows the user to retry again, and if they're successful the loop stops
             System.out.print("Enter username (4-20 alphanumeric characters): ");
@@ -573,7 +544,7 @@ public class SmartCityApp {
         String password = scanner.nextLine();
 
         // When the password the user chooses is invalid, this activates
-        while (password.length() < 8 || !isValidPassword(password)) {
+        while (password.length() < 8 || !ValidationUtils.isValidPassword(password)) {
             if (password.length() < 8) {
                 System.out.println("Password is too short. Minimum 8 characters required.");
             } else {
