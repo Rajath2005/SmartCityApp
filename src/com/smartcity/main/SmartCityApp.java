@@ -11,6 +11,7 @@ import java.util.Scanner;
 
 import com.smartcity.db.DBConnection;
 import com.smartcity.service.EmailService;
+import com.smartcity.util.ValidationUtils;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -550,7 +551,7 @@ public class SmartCityApp {
         String username = scanner.nextLine();
 
         // When the username the user chooses is invalid, this activates
-        while (!isValidUsername(username)) {
+        while (!ValidationUtils.isValidUsername(username)) {
             System.out.println("Invalid username. Please try again.");
             // It allows the user to retry again, and if they're successful the loop stops
             System.out.print("Enter username (4-20 alphanumeric characters): ");
@@ -562,7 +563,7 @@ public class SmartCityApp {
         String password = scanner.nextLine();
 
         // When the password the user chooses is invalid, this activates
-        while (password.length() < 8 || !isValidPassword(password)) {
+        while (password.length() < 8 || !ValidationUtils.isValidPassword(password)) {
             if (password.length() < 8) {
                 System.out.println("Password is too short. Minimum 8 characters required.");
             } else {
