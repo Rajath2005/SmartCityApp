@@ -406,7 +406,7 @@ public class SmartCityApp {
      *                  for display purposes
      */
 
-    ```java
+
 public static void changePassword(String username) {
 
     System.out.println("Enter your current password: ");
@@ -414,7 +414,7 @@ public static void changePassword(String username) {
 
     String query="SELECT id FROM users WHERE username = ? AND password = ?";
 
-    try (Connection connection = getConnection()) {
+    try (Connection connection = DBConnection.getConnection()) {
         if (connection == null) {
             System.out.println("❌ does not connect with database");
             return;
