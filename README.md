@@ -2,6 +2,24 @@
 
 <img src="Assets/SmartCity.drawio.png" alt="Smart City Guide Architecture and Flow Diagram" width="100%"/>
 
+
+## 🏗️ How the Architecture Works
+
+The application follows a **3-layer structure**, with each layer responsible for a specific part of the application:
+
+1. **👤 User Input (CLI)** — The user interacts with the application through the command-line interface by selecting menu options and providing input.
+
+2. **🖥️ `SmartCityApp.java` — Controller Layer** — Handles application menus, reads user input, invokes the appropriate methods, and displays results to the user.
+
+3. **🔌 `DBConnection.java` — Data Layer** — Manages connections to the MySQL database using JDBC and handles database operations.
+
+4. **🗄️ MySQL Database — Storage Layer** — Stores and retrieves application data, including information from the `users` and `places` tables.
+
+
+
+<br>
+<br>
+
 # Smart City Guide - Learn Java, DSA, and System Architecture
 
 **An open-source, interactive Java application designed to help beginners master Data Structures, Algorithms, and System Architecture through real-world contributions.**
@@ -21,6 +39,7 @@
 ## Features
 
 ### For Users & Admins
+- **Live City Stats:** A no-login dashboard showing total attractions, registered users, a per-category breakdown, and the busiest area — all read live from the database.
 - **Interactive Navigation:** Search and discover city attractions, restaurants, and parks.
 - **Role-Based Access Control (RBAC):** Secure authentication for users and administrators.
 - **Dynamic Data Management:** Admins can easily add, update, or remove city locations.
