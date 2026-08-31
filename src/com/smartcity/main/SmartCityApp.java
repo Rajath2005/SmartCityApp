@@ -15,9 +15,10 @@ import java.util.Scanner;
 
 import com.smartcity.db.DBConnection;
 import com.smartcity.model.Place;
+import com.smartcity.service.CacheStats;
+import com.smartcity.service.CachedDBConnection;
 import com.smartcity.service.EmailService;
 import com.smartcity.structures.RecentlyViewedManager;
-import java.util.List;
 import com.smartcity.util.ValidationUtils;
 
 /**
@@ -38,6 +39,9 @@ public class SmartCityApp {
 
     // Recently Viewed Places Manager
     private static final RecentlyViewedManager recentlyViewedManager = new RecentlyViewedManager();
+
+    // Cache-aside layer in front of the database, shared by every place lookup
+    private static final CachedDBConnection cachedDbConnection = new CachedDBConnection();
 
     // SQL Query Constants
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
@@ -890,7 +894,8 @@ public class SmartCityApp {
             System.out.println("1. 👥 View all users");
             System.out.println("2. 🏗️ Manage city resources");
             System.out.println("3. 📋 View system logs");
-            System.out.println("4. 🚪 Logout");
+            System.out.println("4. ⚡ Cache statistics");
+            System.out.println("5. 🚪 Logout");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -908,13 +913,62 @@ public class SmartCityApp {
                     System.out.println("Displaying system logs...");
                     break;
                 case 4:
+                    // Inspect (and optionally flush) the in-memory cache
+                    showCacheStats();
+                    break;
+                case 5:
                     System.out.println("Logging out from admin account. Goodbye!");
                     inAdminMenu = false;
                     break;
                 default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 5.");
             }
         }
+    }
+
+    /**
+     * Prints how the in-memory cache layer has been performing this session —
+     * hits, misses, hit rate, expiries, invalidations, and how much is
+     * currently held — then offers to flush it.
+     * <p>
+     * The numbers are the ones an admin needs to answer "is the cache actually
+     * saving us queries?": a hit rate climbing towards 100% means repeat views
+     * are being served from memory, while a run of misses means entries are
+     * expiring (or being invalidated) faster than they are being reused.
+     */
+    private static void showCacheStats() {
+        CacheStats stats = cachedDbConnection.getCacheStats();
+
+        System.out.println();
+        System.out.println("╔" + "═".repeat(STATS_BOX_WIDTH) + "╗");
+        System.out.println(centeredStatsRow("⚡  CACHE PERFORMANCE"));
+        System.out.println("╠" + "═".repeat(STATS_BOX_WIDTH) + "╣");
+        System.out.println(statsRow("✅", "Cache hits", String.valueOf(stats.getHits())));
+        System.out.println(statsRow("❌", "Cache misses", String.valueOf(stats.getMisses())));
+        System.out.println(statsRow("🎯", "Hit rate", String.format("%.1f%%", stats.getHitRatio() * 100)));
+        System.out.println(statsRow("🔢", "Total lookups", String.valueOf(stats.getTotalLookups())));
+        System.out.println("╟" + "─".repeat(STATS_BOX_WIDTH) + "╢");
+        System.out.println(statsRow("⏳", "Expired entries", String.valueOf(stats.getExpirations())));
+        System.out.println(statsRow("🧹", "Invalidations", String.valueOf(stats.getInvalidations())));
+        System.out.println("╟" + "─".repeat(STATS_BOX_WIDTH) + "╢");
+        System.out.println(statsRow("🏙️", "Places cached", String.valueOf(stats.getPlaceEntries())));
+        System.out.println(statsRow("👥", "Users cached", String.valueOf(stats.getUserEntries())));
+        System.out.println(statsRow("⌛", "Entry TTL", (cachedDbConnection.getTtlMillis() / 1000) + " s"));
+        System.out.println("╚" + "═".repeat(STATS_BOX_WIDTH) + "╝");
+
+        if (stats.getTotalLookups() == 0) {
+            System.out.println("\nℹ️  No lookups yet — view a place twice to see a miss followed by a hit.");
+        }
+
+        System.out.print("\nClear the cache now? (y/N): ");
+        String answer = scanner.nextLine();
+        if (answer != null && answer.trim().equalsIgnoreCase("y")) {
+            cachedDbConnection.clearCache();
+            System.out.println("🧹 Cache cleared. The next read of every place will go to the database.");
+        }
+
+        System.out.print("\nPress Enter to return to the menu... ");
+        scanner.nextLine();
     }
 
     /**
@@ -979,8 +1033,13 @@ public class SmartCityApp {
     }
 
     /**
-     * Prompts the user for a place ID, fetches its details from the database,
-     * prints them, and records the view in the RecentlyViewedManager.
+     * Prompts the user for a place ID, fetches its details through the cache
+     * layer, prints them along with where the data came from and how long the
+     * lookup took, and records the view in the RecentlyViewedManager.
+     * <p>
+     * Looking the same place up twice in a row is the clearest demonstration of
+     * the cache-aside pattern: the first read pays for a database round trip,
+     * every read after it is answered from memory until the TTL elapses.
      */
     private static void viewPlaceDetails() {
         System.out.print("\nEnter place ID to view details: ");
@@ -994,39 +1053,57 @@ public class SmartCityApp {
             return;
         }
 
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
+        // Asked before the lookup, since the lookup itself populates the cache.
+        boolean servedFromCache = cachedDbConnection.isPlaceCached(placeId);
 
-            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
-                pstmt.setInt(1, placeId);
-                try (ResultSet rs = pstmt.executeQuery()) {
-                    if (rs.next()) {
-                        System.out.println("\n📖 ===== PLACE DETAILS =====");
-                        System.out.println("📍 Place ID: " + rs.getInt("id"));
-                        System.out.println("   Name: " + rs.getString("name"));
-                        System.out.println("   Category: " + rs.getString("category"));
-                        System.out.println("   Location: " + rs.getString("location"));
-                        System.out.println("   Description: " + rs.getString("description"));
-                        System.out.println("   Coordinates: " + rs.getDouble("latitude") + ", " + rs.getDouble("longitude"));
-                        System.out.println("-".repeat(50));
-                        
-                        // Record view
-                        recentlyViewedManager.viewPlace(placeId);
-                    } else {
-                        System.out.println("❌ Error: Place with ID " + placeId + " not found.");
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to fetch place details.");
-            System.out.println("   Error message: " + e.getMessage());
+        long startNanos = System.nanoTime();
+        Place place = cachedDbConnection.getPlace(placeId);
+        double elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000.0;
+
+        if (place == null) {
+            // A miss that returns nothing means either no such row or an
+            // unreachable database, so the message covers both.
+            System.out.println("❌ Error: Place with ID " + placeId + " could not be loaded.");
+            System.out.println("   It may not exist, or the database may be unavailable.");
+            return;
         }
+
+        System.out.println("\n📖 ===== PLACE DETAILS =====");
+        System.out.println("📍 Place ID: " + place.getId());
+        System.out.println("   Name: " + place.getName());
+        System.out.println("   Category: " + place.getCategory());
+        System.out.println("   Location: " + place.getLocation());
+        System.out.println("   Description: " + place.getDescription());
+        System.out.println("   Coordinates: " + place.getLatitude() + ", " + place.getLongitude());
+        System.out.println(cacheSourceLine(servedFromCache, elapsedMillis));
+        System.out.println("   " + cachedDbConnection.getCacheStats());
+        System.out.println("-".repeat(50));
+
+        // Record view
+        recentlyViewedManager.viewPlace(placeId);
+    }
+
+    /**
+     * Builds the one-line note that tells the user whether a lookup was served
+     * from the in-memory cache or from the database, and how long it took.
+     *
+     * @param servedFromCache true if the value was already cached when the
+     *                        lookup started
+     * @param elapsedMillis   how long the lookup took, in milliseconds
+     * @return a formatted line ready to print
+     */
+    private static String cacheSourceLine(boolean servedFromCache, double elapsedMillis) {
+        String source = servedFromCache
+                ? "⚡ Cache HIT  — served from memory"
+                : "🐢 Cache MISS — read from the database";
+        return String.format("   %s in %.3f ms", source, elapsedMillis);
     }
 
     /**
      * Fetches the recently viewed places from the manager and displays them.
+     * <p>
+     * Every place in this list has just been viewed, so the lookups go through
+     * the cache and are normally answered from memory without a single query.
      */
     private static void viewRecentlyViewedPlaces() {
         List<Integer> recentIds = recentlyViewedManager.getRecent();
@@ -1038,28 +1115,21 @@ public class SmartCityApp {
         System.out.println("\n🕒 ===== RECENTLY VIEWED PLACES =====");
         System.out.println("-".repeat(50));
 
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
+        CacheStats before = cachedDbConnection.getCacheStats();
 
-            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
-                for (int id : recentIds) {
-                    pstmt.setInt(1, id);
-                    try (ResultSet rs = pstmt.executeQuery()) {
-                        if (rs.next()) {
-                            System.out.println("📍 Place ID: " + rs.getInt("id"));
-                            System.out.println("   Name: " + rs.getString("name"));
-                            System.out.println("   Category: " + rs.getString("category"));
-                            System.out.println("");
-                        }
-                    }
-                }
+        for (int id : recentIds) {
+            Place place = cachedDbConnection.getPlace(id);
+            if (place != null) {
+                System.out.println("📍 Place ID: " + place.getId());
+                System.out.println("   Name: " + place.getName());
+                System.out.println("   Category: " + place.getCategory());
+                System.out.println("");
             }
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to fetch recently viewed places.");
-            System.out.println("   Error message: " + e.getMessage());
         }
+
+        CacheStats after = cachedDbConnection.getCacheStats();
+        System.out.println("⚡ " + (after.getHits() - before.getHits()) + " of " + recentIds.size()
+                + " lookups served from cache.");
         System.out.println("-".repeat(50));
     }
 
@@ -1395,6 +1465,9 @@ public class SmartCityApp {
                 int rowsAffected = pstmt.executeUpdate();
 
                 if (rowsAffected > 0) {
+                    // An earlier failed lookup may have left nothing cached, but drop
+                    // the key anyway so the new row can never be shadowed.
+                    cachedDbConnection.invalidatePlace(id);
                     System.out.println("✅ Success! Place '" + name + "' has been added to the city.");
                 } else {
                     System.out.println("❌ Error: Failed to add place. Please try again.");
@@ -1547,6 +1620,8 @@ public class SmartCityApp {
                 int rows = updatePstmt.executeUpdate();
 
                 if (rows > 0) {
+                    // The cached copy is now stale — evict it so the next read reloads.
+                    cachedDbConnection.invalidatePlace(placeId);
                     System.out.println("✅ Success! Place updated successfully.");
                 } else {
                     System.out.println("❌ Error: Update failed.");
@@ -1589,6 +1664,8 @@ public class SmartCityApp {
                 int rowsAffected = pstmt.executeUpdate();
 
                 if (rowsAffected > 0) {
+                    // The row is gone; the cached copy must go with it.
+                    cachedDbConnection.invalidatePlace(placeId);
                     System.out.println("✅ Success! Place with ID " + placeId + " has been deleted.");
                 } else {
                     System.out.println("❌ Error: Place with ID " + placeId + " not found.");
