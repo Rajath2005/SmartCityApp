@@ -46,7 +46,12 @@ public class SmartCityApp {
     // SQL Query Constants
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
     private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
-    private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ?";
+    private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ? AND is_active = TRUE";
+    // Only consulted after a failed login, to tell a deactivated account apart from a wrong password
+    private static final String DEACTIVATED_ACCOUNT_QUERY = "SELECT id FROM users WHERE username = ? AND password = ? AND is_active = FALSE";
+    private static final String SELECT_ACTIVE_NON_ADMIN_USERS_QUERY =
+            "SELECT username FROM users WHERE role != 'ADMIN' AND is_active = TRUE ORDER BY username ASC";
+    private static final String DEACTIVATE_USER_QUERY = "UPDATE users SET is_active = FALSE WHERE username = ? AND role != 'ADMIN'";
     private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
     private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
     private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -653,6 +658,10 @@ public class SmartCityApp {
                             showPlaceOfTheDay(connection);
                             showUserMenu(username);
                         }
+                    } else if (isDeactivatedAccount(connection, username, hashPassword(password))) {
+                        // The credentials were right, so say why they were refused
+                        // rather than sending the user off to reset a working password.
+                        System.out.println("❌ This account has been deactivated. Please contact an administrator.");
                     } else {
                         System.out.println("❌ Error: Username or password incorrect. Please try again.");
                     }
@@ -662,6 +671,29 @@ public class SmartCityApp {
         } catch (SQLException e) {
             System.out.println("❌ Error: Failed to login user.");
             System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Checks whether a failed login was refused because the account is
+     * deactivated rather than because the credentials were wrong. Runs only
+     * after the login query has already come back empty.
+     *
+     * @param connection     an open database connection
+     * @param username       the username that was entered
+     * @param hashedPassword the hash of the password that was entered
+     * @return true if these credentials match an account that has been
+     *         deactivated
+     * @throws SQLException if the lookup fails
+     */
+    private static boolean isDeactivatedAccount(Connection connection, String username, String hashedPassword)
+            throws SQLException {
+        try (PreparedStatement pstmt = connection.prepareStatement(DEACTIVATED_ACCOUNT_QUERY)) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, hashedPassword);
+            try (ResultSet resultSet = pstmt.executeQuery()) {
+                return resultSet.next();
+            }
         }
     }
 
@@ -895,7 +927,8 @@ public class SmartCityApp {
             System.out.println("2. 🏗️ Manage city resources");
             System.out.println("3. 📋 View system logs");
             System.out.println("4. ⚡ Cache statistics");
-            System.out.println("5. 🚪 Logout");
+            System.out.println("5. 🚫 Deactivate a user account");
+            System.out.println("6. 🚪 Logout");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -917,13 +950,148 @@ public class SmartCityApp {
                     showCacheStats();
                     break;
                 case 5:
+                    // Soft-delete: keep the account and its history, but block logins
+                    deactivateUser();
+                    break;
+                case 6:
                     System.out.println("Logging out from admin account. Goodbye!");
                     inAdminMenu = false;
                     break;
                 default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 5.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
             }
         }
+    }
+
+    /**
+     * Deactivates a user account: a soft delete that leaves the row, and
+     * everything attached to it, in place while refusing the account at login.
+     * <p>
+     * Administrators are never listed and never updated — the {@code role !=
+     * 'ADMIN'} guard is repeated in the UPDATE itself, so an admin account
+     * cannot be disabled even if the listing and the update disagree about who
+     * is an admin. The change is confirmed before it is applied.
+     */
+    private static void deactivateUser() {
+        System.out.println("\n--- Deactivate a User Account ---");
+
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            List<String> activeUsers = findActiveNonAdminUsernames(connection);
+
+            if (activeUsers.isEmpty()) {
+                System.out.println("ℹ️  There are no active user accounts to deactivate.");
+                pauseUntilEnter();
+                return;
+            }
+
+            System.out.println("\n👥 Active user accounts:");
+            for (String activeUser : activeUsers) {
+                System.out.println("   • " + activeUser);
+            }
+            System.out.println("-".repeat(50));
+
+            System.out.print("Enter username to deactivate: ");
+            String entered = scanner.nextLine().trim();
+
+            if (entered.isEmpty()) {
+                System.out.println("❌ Error: Username cannot be empty. Nothing was changed.");
+                pauseUntilEnter();
+                return;
+            }
+
+            // Resolve what was typed against the list, so the message is accurate
+            // and the UPDATE runs against the username exactly as it is stored.
+            String username = matchIgnoringCase(activeUsers, entered);
+
+            if (username == null) {
+                System.out.println("❌ Error: No active, non-admin account named '" + entered + "' was found.");
+                System.out.println("   Administrators cannot be deactivated, and an account can only be deactivated once.");
+                pauseUntilEnter();
+                return;
+            }
+
+            System.out.print("Are you sure? This will prevent them from logging in. (yes/no): ");
+            String confirmation = scanner.nextLine().trim();
+
+            if (!confirmation.equalsIgnoreCase("yes")) {
+                System.out.println("↩️  Cancelled. '" + username + "' is still active.");
+                pauseUntilEnter();
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(DEACTIVATE_USER_QUERY)) {
+                pstmt.setString(1, username);
+
+                int rowsAffected = pstmt.executeUpdate();
+
+                if (rowsAffected > 0) {
+                    System.out.println("✅ User '" + username + "' has been deactivated.");
+                } else {
+                    System.out.println("❌ Error: '" + username + "' could not be deactivated.");
+                    System.out.println("   The account may have been removed or promoted to administrator.");
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to deactivate the user account.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+
+        pauseUntilEnter();
+    }
+
+    /**
+     * Reads the usernames of every account that can still be deactivated:
+     * active, and not an administrator.
+     *
+     * @param connection an open database connection
+     * @return the matching usernames in alphabetical order, empty if there are none
+     * @throws SQLException if the query fails
+     */
+    private static List<String> findActiveNonAdminUsernames(Connection connection) throws SQLException {
+        List<String> usernames = new ArrayList<>();
+
+        try (PreparedStatement pstmt = connection.prepareStatement(SELECT_ACTIVE_NON_ADMIN_USERS_QUERY);
+             ResultSet resultSet = pstmt.executeQuery()) {
+
+            while (resultSet.next()) {
+                usernames.add(resultSet.getString("username"));
+            }
+        }
+
+        return usernames;
+    }
+
+    /**
+     * Finds the entry of a list that equals the given text ignoring case.
+     * Used so an admin who types "John" can act on the account stored as
+     * "john", while the stored spelling is what gets used from then on.
+     *
+     * @param candidates the values to search
+     * @param text       the text that was typed
+     * @return the matching entry as stored, or null if nothing matched
+     */
+    private static String matchIgnoringCase(List<String> candidates, String text) {
+        for (String candidate : candidates) {
+            if (candidate.equalsIgnoreCase(text)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Holds the screen until the user presses Enter. The admin menu clears the
+     * terminal as soon as it is redrawn, so without this the outcome of an
+     * action would flash past unread.
+     */
+    private static void pauseUntilEnter() {
+        System.out.print("\nPress Enter to return to the menu... ");
+        scanner.nextLine();
     }
 
     /**
@@ -967,8 +1135,7 @@ public class SmartCityApp {
             System.out.println("🧹 Cache cleared. The next read of every place will go to the database.");
         }
 
-        System.out.print("\nPress Enter to return to the menu... ");
-        scanner.nextLine();
+        pauseUntilEnter();
     }
 
     /**
