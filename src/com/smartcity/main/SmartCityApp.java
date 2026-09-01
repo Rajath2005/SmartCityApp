@@ -38,6 +38,7 @@ public class SmartCityApp {
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
     private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
     private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ?";
+    private static final String SEARCH_BY_NAME_QUERY = "SELECT * FROM places WHERE LOWER(name) LIKE LOWER(?)";
     private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
     private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
     private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -963,7 +964,7 @@ public class SmartCityApp {
 
     /**
      * Displays the search submenu loop, allowing the user to search places
-     * by category, search by location, or go back to the previous menu.
+     * by category, by location, by name, or go back to the previous menu.
      */
     private static void searchPlacesMenu() {
         boolean inSearchMenu = true;
@@ -972,7 +973,8 @@ public class SmartCityApp {
             System.out.println("\n===== Search Places =====");
             System.out.println("1. 🏷️ Search by category");
             System.out.println("2. 📌 Search by location");
-            System.out.println("3. ⬅️ Back");
+            System.out.println("3. 🔤 Search by name");
+            System.out.println("4. ⬅️ Back");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -988,11 +990,15 @@ public class SmartCityApp {
                     searchByLocation();
                     break;
                 case 3:
+                    // Search places by name
+                    searchByName();
+                    break;
+                case 4:
                     // Return to user menu
                     inSearchMenu = false;
                     break;
                 default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
             }
         }
     }
@@ -1055,6 +1061,37 @@ public class SmartCityApp {
 
         } catch (SQLException e) {
             System.out.println("❌ Error: Failed to search places by location.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the user for a name keyword and queries the database for
+     * all places whose name contains that keyword (case-insensitive),
+     * printing the matching results.
+     */
+    private static void searchByName() {
+        System.out.print("\nEnter place name to search: ");
+        String searchName = scanner.nextLine();
+
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(SEARCH_BY_NAME_QUERY)) {
+                pstmt.setString(1, "%" + searchName + "%"); // Add wildcards for partial matching
+
+                try (ResultSet resultSet = pstmt.executeQuery()) {
+                    // Display search results
+                    System.out.println("\n🔍 Search Results for Name: " + searchName);
+                    System.out.println("-".repeat(50));
+                    placeResultPrintout(resultSet);
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to search places by name.");
             System.out.println("   Error message: " + e.getMessage());
         }
     }
