@@ -822,6 +822,7 @@ public static void changePassword(String username) {
             System.out.println("8. ⬅ Change password");
             System.out.println("9. 🚪 Logout");
 
+
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
