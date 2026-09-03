@@ -11,6 +11,9 @@ import java.util.Scanner;
 
 import com.smartcity.db.DBConnection;
 import com.smartcity.service.EmailService;
+import com.smartcity.structures.RecentlyViewedManager;
+import java.util.List;
+import com.smartcity.util.ValidationUtils;
 
 /**
  * The main entry point for the Smart City Guide application.
@@ -28,6 +31,9 @@ public class SmartCityApp {
     // Scanner object shared across methods
     private final static Scanner scanner = new Scanner(System.in);
 
+    // Recently Viewed Places Manager
+    private static final RecentlyViewedManager recentlyViewedManager = new RecentlyViewedManager();
+
     // SQL Query Constants
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
     private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
@@ -39,10 +45,20 @@ public class SmartCityApp {
     private static final String UPDATE_PLACE_QUERY = "UPDATE places SET name = ?, category = ?, location = ?, description = ?, latitude = ?, longitude = ? WHERE id = ?";
     private static final String DELETE_PLACE_QUERY = "DELETE FROM places WHERE id = ?";
     private static final String SELECT_ALL_CREDENTIALS_QUERY = "SELECT id, password FROM users";
+    private static final String COUNT_PLACES_QUERY = "SELECT COUNT(*) FROM places";
+    private static final String COUNT_USERS_QUERY = "SELECT COUNT(*) FROM users";
+    private static final String COUNT_PLACES_BY_CATEGORY_QUERY =
+            "SELECT category, COUNT(*) AS cnt FROM places GROUP BY category ORDER BY cnt DESC, category ASC";
+    private static final String MOST_POPULAR_LOCATION_QUERY =
+            "SELECT location, COUNT(*) AS cnt FROM places GROUP BY location ORDER BY cnt DESC LIMIT 1";
 
     private static final String UPDATE_PASSWORD_QUERY = "UPDATE users SET password = ? WHERE id = ?";
 
     private static final String SHA256_HEX_PATTERN = "^[a-f0-9]{64}$";
+
+    // Layout of the City Stats box, measured in terminal columns
+    private static final int STATS_BOX_WIDTH = 44;
+    private static final int STATS_LABEL_COLUMN = 27;
 
     /**
      * Application entry point. Starts the Smart City Guide CLI, runs a
@@ -68,6 +84,9 @@ public class SmartCityApp {
 
             // Handle user choice
             switch (choice) {
+                case 0:
+                    showCityStats();
+                    break;
                 case 1:
                     register();
                     break;
@@ -80,7 +99,7 @@ public class SmartCityApp {
                     isRunning = false;
                     break;
                 default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 0 and 3.");
             }
         }
 
@@ -106,16 +125,321 @@ public class SmartCityApp {
     }
 
     /**
-     * Clears the screen and prints the main menu options (Register, Login, Exit)
-     * to standard output.
+     * Clears the screen and prints the main menu options (View City Stats,
+     * Register, Login, Exit) to standard output.
      */
     private static void displayMenu() {
         clearScreen();
         System.out.println("\n===== Smart City Guide Menu =====");
+        System.out.println("0. 📊 View City Stats");
         System.out.println("1. 📝 Register");
         System.out.println("2. 🔑 Login");
         System.out.println("3. 🚪 Exit");
         System.out.print("Enter your choice: ");
+    }
+
+    /**
+     * Displays a live snapshot of the city data — total attractions,
+     * registered users, a per-category breakdown, and the busiest area —
+     * inside a formatted box. Every figure is read from the database at the
+     * moment this method runs; nothing is cached or hard-coded.
+     * <p>
+     * This view is intentionally reachable from the main menu without
+     * logging in, so visitors can see the state of the city at a glance.
+     */
+    private static void showCityStats() {
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection != null) {
+                printStatsBox(connection);
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to load city statistics from database.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+
+        // The menu clears the screen as soon as it is redrawn, so wait for the
+        // user before handing control back — otherwise the box (or the error
+        // message above) would flash past unread.
+        System.out.print("\nPress Enter to return to the menu... ");
+        scanner.nextLine();
+    }
+
+    /**
+     * Queries every statistic and prints the complete stats box.
+     *
+     * @param connection an open database connection
+     * @throws SQLException if any of the statistics queries fail
+     */
+    private static void printStatsBox(Connection connection) throws SQLException {
+        int totalPlaces = countRows(connection, COUNT_PLACES_QUERY);
+        int totalUsers = countRows(connection, COUNT_USERS_QUERY);
+
+        System.out.println();
+        System.out.println("╔" + "═".repeat(STATS_BOX_WIDTH) + "╗");
+        System.out.println(centeredStatsRow("📊  SMART CITY LIVE STATS"));
+        System.out.println("╠" + "═".repeat(STATS_BOX_WIDTH) + "╣");
+        System.out.println(statsRow("🏙️", "Total Attractions", String.valueOf(totalPlaces)));
+        System.out.println(statsRow("👥", "Registered Users", String.valueOf(totalUsers)));
+        System.out.println("╟" + "─".repeat(STATS_BOX_WIDTH) + "╢");
+
+        printCategoryBreakdown(connection);
+
+        System.out.println("╟" + "─".repeat(STATS_BOX_WIDTH) + "╢");
+        System.out.println(statsRow("📍", "Most popular area", findMostPopularLocation(connection)));
+        System.out.println("╚" + "═".repeat(STATS_BOX_WIDTH) + "╝");
+    }
+
+    /**
+     * Prints one box row per place category, showing how many places fall
+     * into each. Categories are ordered by count (largest first) so the
+     * dominant category is easiest to spot.
+     *
+     * @param connection an open database connection
+     * @throws SQLException if the category aggregation query fails
+     */
+    private static void printCategoryBreakdown(Connection connection) throws SQLException {
+        boolean hasCategories = false;
+
+        try (PreparedStatement pstmt = connection.prepareStatement(COUNT_PLACES_BY_CATEGORY_QUERY);
+             ResultSet resultSet = pstmt.executeQuery()) {
+
+            while (resultSet.next()) {
+                hasCategories = true;
+                String category = resultSet.getString("category");
+                int count = resultSet.getInt("cnt");
+                System.out.println(statsRow(categoryIcon(category), prettifyCategory(category), String.valueOf(count)));
+            }
+        }
+
+        if (!hasCategories) {
+            System.out.println(centeredStatsRow("(no places recorded yet)"));
+        }
+    }
+
+    /**
+     * Finds the location that has the highest number of places attached to it.
+     *
+     * @param connection an open database connection
+     * @return the busiest location followed by its place count, or "N/A" when
+     *         there are no places in the database yet
+     * @throws SQLException if the location aggregation query fails
+     */
+    private static String findMostPopularLocation(Connection connection) throws SQLException {
+        try (PreparedStatement pstmt = connection.prepareStatement(MOST_POPULAR_LOCATION_QUERY);
+             ResultSet resultSet = pstmt.executeQuery()) {
+
+            if (resultSet.next()) {
+                return resultSet.getString("location") + " (" + resultSet.getInt("cnt") + ")";
+            }
+        }
+
+        return "N/A";
+    }
+
+    /**
+     * Runs a query that returns a single numeric count in its first column.
+     *
+     * @param connection an open database connection
+     * @param query      a {@code SELECT COUNT(*) ...} style query
+     * @return the count returned by the query, or 0 if it produced no rows
+     * @throws SQLException if the query fails
+     */
+    private static int countRows(Connection connection, String query) throws SQLException {
+        try (PreparedStatement pstmt = connection.prepareStatement(query);
+             ResultSet resultSet = pstmt.executeQuery()) {
+
+            return resultSet.next() ? resultSet.getInt(1) : 0;
+        }
+    }
+
+    /**
+     * Maps a place category to a representative emoji so the stats box stays
+     * readable at a glance. Unknown categories fall back to a generic pin.
+     *
+     * @param category the category name as stored in the database
+     * @return a single emoji representing the category
+     */
+    private static String categoryIcon(String category) {
+        if (category == null) {
+            return "📌";
+        }
+
+        switch (category.trim().toLowerCase()) {
+            case "hotel":
+            case "hotels":
+                return "🏨";
+            case "park":
+            case "parks":
+                return "🌳";
+            case "restaurant":
+            case "restaurants":
+                return "🍽️";
+            case "museum":
+            case "museums":
+                return "🏛️";
+            case "monument":
+            case "monuments":
+                return "🗿";
+            case "hospital":
+            case "hospitals":
+                return "🏥";
+            case "school":
+            case "schools":
+                return "🏫";
+            case "mall":
+            case "malls":
+            case "shopping":
+                return "🛍️";
+            case "temple":
+            case "temples":
+                return "🛕";
+            case "beach":
+            case "beaches":
+                return "🏖️";
+            default:
+                return "📌";
+        }
+    }
+
+    /**
+     * Trims a category name and capitalises its first letter for display.
+     *
+     * @param category the raw category name from the database
+     * @return a display-friendly category label
+     */
+    private static String prettifyCategory(String category) {
+        if (category == null || category.trim().isEmpty()) {
+            return "Uncategorised";
+        }
+
+        String trimmed = category.trim();
+        return Character.toUpperCase(trimmed.charAt(0)) + trimmed.substring(1);
+    }
+
+    /**
+     * Builds a single "icon label : value" row of the stats box, aligning the
+     * colon of every row to the same column.
+     *
+     * @param icon  the emoji shown at the start of the row
+     * @param label the metric name
+     * @param value the metric value, already converted to text
+     * @return the fully padded row, including its box borders
+     */
+    private static String statsRow(String icon, String label, String value) {
+        String left = "  " + icon + "  " + truncateToWidth(label, STATS_LABEL_COLUMN - 8);
+        int gap = STATS_LABEL_COLUMN - displayWidth(left);
+
+        if (gap < 1) {
+            gap = 1;
+        }
+
+        String right = ":  " + truncateToWidth(value, STATS_BOX_WIDTH - STATS_LABEL_COLUMN - 4);
+        return statsBoxRow(left + " ".repeat(gap) + right);
+    }
+
+    /**
+     * Wraps content in the vertical borders of the stats box, padding it on
+     * the right so the box keeps a straight edge.
+     *
+     * @param content the row content, without borders
+     * @return the bordered, right-padded row
+     */
+    private static String statsBoxRow(String content) {
+        int padding = Math.max(0, STATS_BOX_WIDTH - displayWidth(content));
+        return "║" + content + " ".repeat(padding) + "║";
+    }
+
+    /**
+     * Wraps content in the vertical borders of the stats box, centring it
+     * between them.
+     *
+     * @param content the row content, without borders
+     * @return the bordered, centred row
+     */
+    private static String centeredStatsRow(String content) {
+        int padding = Math.max(0, STATS_BOX_WIDTH - displayWidth(content));
+        int leftPadding = padding / 2;
+        return "║" + " ".repeat(leftPadding) + content + " ".repeat(padding - leftPadding) + "║";
+    }
+
+    /**
+     * Shortens text so that it occupies at most {@code maxWidth} terminal
+     * columns, appending an ellipsis when characters had to be dropped.
+     *
+     * @param text     the text to shorten (may be null)
+     * @param maxWidth the maximum number of columns the result may occupy
+     * @return the original text, or a truncated copy ending in an ellipsis
+     */
+    private static String truncateToWidth(String text, int maxWidth) {
+        if (text == null) {
+            return "";
+        }
+
+        if (displayWidth(text) <= maxWidth) {
+            return text;
+        }
+
+        StringBuilder shortened = new StringBuilder();
+        int width = 0;
+        int index = 0;
+
+        while (index < text.length()) {
+            int codePoint = text.codePointAt(index);
+
+            if (width + glyphWidth(codePoint) > maxWidth - 1) {
+                break;
+            }
+
+            shortened.appendCodePoint(codePoint);
+            width += glyphWidth(codePoint);
+            index += Character.charCount(codePoint);
+        }
+
+        return shortened.toString() + "…";
+    }
+
+    /**
+     * Calculates how many terminal columns a string occupies, counting emoji
+     * as double-width. {@code String.length()} cannot be used here because
+     * emoji are surrogate pairs that render as a single wide glyph, which
+     * would knock the stats box out of alignment.
+     *
+     * @param text the text to measure
+     * @return the width of the text in terminal columns
+     */
+    private static int displayWidth(String text) {
+        int width = 0;
+        int index = 0;
+
+        while (index < text.length()) {
+            int codePoint = text.codePointAt(index);
+            width += glyphWidth(codePoint);
+            index += Character.charCount(codePoint);
+        }
+
+        return width;
+    }
+
+    /**
+     * Returns the number of terminal columns a single code point occupies:
+     * 0 for the invisible joiners emoji are built from, 2 for emoji and other
+     * pictographs, and 1 for ordinary characters.
+     *
+     * @param codePoint the Unicode code point to measure
+     * @return 0, 1, or 2 columns
+     */
+    private static int glyphWidth(int codePoint) {
+        // Variation selectors and the zero-width joiner only modify the glyph
+        // next to them, so they take up no columns of their own.
+        if (codePoint == 0xFE0F || codePoint == 0xFE0E || codePoint == 0x200D) {
+            return 0;
+        }
+
+        boolean isWide = (codePoint >= 0x1F300 && codePoint <= 0x1FAFF)
+                || (codePoint >= 0x2600 && codePoint <= 0x27BF)
+                || (codePoint >= 0x2B00 && codePoint <= 0x2BFF);
+
+        return isWide ? 2 : 1;
     }
 
     /**
@@ -232,7 +556,7 @@ public class SmartCityApp {
         String username = scanner.nextLine();
 
         // When the username the user chooses is invalid, this activates
-        while (!isValidUsername(username)) {
+        while (!ValidationUtils.isValidUsername(username)) {
             System.out.println("Invalid username. Please try again.");
             // It allows the user to retry again, and if they're successful the loop stops
             System.out.print("Enter username (4-20 alphanumeric characters): ");
@@ -244,7 +568,7 @@ public class SmartCityApp {
         String password = scanner.nextLine();
 
         // When the password the user chooses is invalid, this activates
-        while (password.length() < 8 || !isValidPassword(password)) {
+        while (password.length() < 8 || !ValidationUtils.isValidPassword(password)) {
             if (password.length() < 8) {
                 System.out.println("Password is too short. Minimum 8 characters required.");
             } else {
@@ -488,14 +812,15 @@ public static void changePassword(String username) {
         while (inUserMenu) {
             clearScreen();
             System.out.println("\n===== User Menu (User: " + username + ") =====");
-            System.out.println("1. 🏙 Explore city attractions");
-            System.out.println("2. 🔍 Search places");
-            System.out.println("3. 📍 View nearby services");
-            System.out.println("4. 🧭 Check navigation");
-            System.out.println("5. 🚪 Logout");
-            System.out.println("6. ⬅ Change password");
-            
-            
+            System.out.println("1. 🏙 Explore city attractions (A-Z)");
+            System.out.println("2. 🏙 Explore city attractions (By ID)");
+            System.out.println("3. 🔍 Search places");
+            System.out.println("4. 📖 View place details (by ID)");
+            System.out.println("5. 🕒 View recently viewed places");
+            System.out.println("6. 📍 View nearby services");
+            System.out.println("7. 🧭 Check navigation");
+            System.out.println("8. ⬅ Change password");
+            System.out.println("9. 🚪 Logout");
 
             System.out.print("Enter your choice: ");
 
@@ -504,30 +829,122 @@ public static void changePassword(String username) {
 
             switch (choice) {
                 case 1:
-                    // Display all city attractions
                     viewAllPlaces();
                     break;
-                // Display all city attractions sorted by ID
                 case 2:
                     viewAllPlacesSortedById();
                     break;
                 case 3:
-                    // Search for places
                     searchPlacesMenu();
                     break;
                 case 4:
-                    System.out.println("Finding nearby services...");
-                    break;    
+                    viewPlaceDetails();
+                    break;
                 case 5:
-                    System.out.println("Opening navigation...");
+                    viewRecentlyViewedPlaces();
                     break;
                 case 6:
+                    System.out.println("Finding nearby services...");
+                    break;
+                case 7:
+                    System.out.println("Opening navigation...");
+                    break;
+                case 8:
                     changePassword(username);
-                    break;    
+                    break;
+                case 9:
+                    System.out.println("Logging out. Goodbye!");
+                    recentlyViewedManager.clear();
+                    inUserMenu = false;
+                    break;
                 default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 9.");
             }
         }
+    }
+
+    /**
+     * Prompts the user for a place ID, fetches its details from the database,
+     * prints them, and records the view in the RecentlyViewedManager.
+     */
+    private static void viewPlaceDetails() {
+        System.out.print("\nEnter place ID to view details: ");
+        int placeId;
+        try {
+            placeId = scanner.nextInt();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid ID. Please enter a number.");
+            scanner.nextLine();
+            return;
+        }
+
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
+                pstmt.setInt(1, placeId);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        System.out.println("\n📖 ===== PLACE DETAILS =====");
+                        System.out.println("📍 Place ID: " + rs.getInt("id"));
+                        System.out.println("   Name: " + rs.getString("name"));
+                        System.out.println("   Category: " + rs.getString("category"));
+                        System.out.println("   Location: " + rs.getString("location"));
+                        System.out.println("   Description: " + rs.getString("description"));
+                        System.out.println("   Coordinates: " + rs.getDouble("latitude") + ", " + rs.getDouble("longitude"));
+                        System.out.println("-".repeat(50));
+                        // Record view
+                        recentlyViewedManager.viewPlace(placeId);
+                    } else {
+                        System.out.println("❌ Error: Place with ID " + placeId + " not found.");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch place details.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Fetches the recently viewed places from the manager and displays them.
+     */
+    private static void viewRecentlyViewedPlaces() {
+        List<Integer> recentIds = recentlyViewedManager.getRecent();
+        if (recentIds.isEmpty()) {
+            System.out.println("\n🕒 You haven't viewed any places yet.");
+            return;
+        }
+
+        System.out.println("\n🕒 ===== RECENTLY VIEWED PLACES =====");
+        System.out.println("-".repeat(50));
+
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
+                for (int id : recentIds) {
+                    pstmt.setInt(1, id);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            System.out.println("📍 Place ID: " + rs.getInt("id"));
+                            System.out.println("   Name: " + rs.getString("name"));
+                            System.out.println("   Category: " + rs.getString("category"));
+                            System.out.println("");
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch recently viewed places.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+        System.out.println("-".repeat(50));
     }
 
     /**
