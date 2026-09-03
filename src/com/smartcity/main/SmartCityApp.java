@@ -729,8 +729,85 @@ public class SmartCityApp {
      * @param username the username of the currently logged-in user, used
      *                  for display purposes
      */
+
+
+public static void changePassword(String username) {
+
+    System.out.println("Enter your current password: ");
+    String currentPassword = scanner.nextLine();
+
+    String query="SELECT id FROM users WHERE username = ? AND password = ?";
+
+    try (Connection connection = DBConnection.getConnection()) {
+        if (connection == null) {
+            System.out.println("❌ does not connect with database");
+            return;
+        }
+
+        try (PreparedStatement stmt=connection.prepareStatement(query)){
+            stmt.setString(1, username);
+            stmt.setString(2, hashPassword(currentPassword));
+
+            try(ResultSet rs=stmt.executeQuery()){
+
+                if(!rs.next()){
+                    System.out.println(
+                        "❌ Current password is incorrect."
+                    );
+                    return;
+                }
+            }
+        }
+        System.out.println("Enter your new password: ");
+        String newPassword = scanner.nextLine();
+
+        if(!isValidPassword(newPassword)){
+            System.out.println("❌ Invalid new password.");
+            return;
+        }
+
+        System.out.println("Confirm your new password: ");
+        String confirmPassword = scanner.nextLine();
+
+        if(!newPassword.equals(confirmPassword)){
+            System.out.println("❌ Confirm password and new password do not match.");
+            return;
+        }
+
+        String updateQuery ="UPDATE users SET password = ? WHERE username = ?";
+
+        try (PreparedStatement updateStmt=connection.prepareStatement(updateQuery)){
+
+            updateStmt.setString(1, hashPassword(newPassword));
+            updateStmt.setString(2, username);
+
+            int rowsUpdated=updateStmt.executeUpdate();
+
+            if(rowsUpdated>0) {
+                System.out.println(
+                    "✅ Password changed successfully!"
+                );
+            }else{
+                System.out.println(
+                    "❌ Failed to change password."
+                );
+            }
+        }
+
+    }catch(SQLException e){
+        System.out.println(
+            "❌ Error: Failed to change password."
+        );
+        System.out.println(
+            "Error message: " + e.getMessage()
+        );
+    }
+}
+
     private static void showUserMenu(String username) {
         boolean inUserMenu = true;
+
+        
 
         while (inUserMenu) {
             clearScreen();
@@ -742,7 +819,9 @@ public class SmartCityApp {
             System.out.println("5. 🕒 View recently viewed places");
             System.out.println("6. 📍 View nearby services");
             System.out.println("7. 🧭 Check navigation");
-            System.out.println("8. 🚪 Logout");
+            System.out.println("8. ⬅ Change password");
+            System.out.println("9. 🚪 Logout");
+
 
             System.out.print("Enter your choice: ");
 
@@ -772,12 +851,15 @@ public class SmartCityApp {
                     System.out.println("Opening navigation...");
                     break;
                 case 8:
+                    changePassword(username);
+                    break;
+                case 9:
                     System.out.println("Logging out. Goodbye!");
                     recentlyViewedManager.clear();
                     inUserMenu = false;
                     break;
                 default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 9.");
             }
         }
     }
@@ -815,7 +897,6 @@ public class SmartCityApp {
                         System.out.println("   Description: " + rs.getString("description"));
                         System.out.println("   Coordinates: " + rs.getDouble("latitude") + ", " + rs.getDouble("longitude"));
                         System.out.println("-".repeat(50));
-                        
                         // Record view
                         recentlyViewedManager.viewPlace(placeId);
                     } else {
