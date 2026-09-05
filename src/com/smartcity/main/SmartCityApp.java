@@ -742,7 +742,8 @@ public class SmartCityApp {
             System.out.println("5. 🕒 View recently viewed places");
             System.out.println("6. 📍 View nearby services");
             System.out.println("7. 🧭 Check navigation");
-            System.out.println("8. 🚪 Logout");
+            System.out.println("8. 👤 View My Profile");
+            System.out.println("9. 🚪 Logout");
 
             System.out.print("Enter your choice: ");
 
@@ -772,6 +773,9 @@ public class SmartCityApp {
                     System.out.println("Opening navigation...");
                     break;
                 case 8:
+                    viewUserProfile(username);
+                    break;
+                case 9:
                     System.out.println("Logging out. Goodbye!");
                     recentlyViewedManager.clear();
                     inUserMenu = false;
@@ -779,6 +783,37 @@ public class SmartCityApp {
                 default:
                     System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
             }
+        }
+    }
+
+    private static void viewUserProfile(String username) {
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            String query = "SELECT username, role FROM users WHERE username = ?";
+
+            try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+                pstmt.setString(1, username);
+
+                try (ResultSet resultSet = pstmt.executeQuery()) {
+                    if (resultSet.next()) {
+                        String dbUsername = resultSet.getString("username");
+                        String role = resultSet.getString("role");
+
+                        System.out.println("╔══════════════════════════╗");
+                        System.out.println("║      👤 MY PROFILE       ║");
+                        System.out.println("╠══════════════════════════╣");
+                        System.out.printf("║  Username : %-12s ║%n", dbUsername);
+                        System.out.printf("║  Role     : %-12s ║%n", role);
+                        System.out.println("╚══════════════════════════╝");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to load user profile.");
+            System.out.println("   Error message: " + e.getMessage());
         }
     }
 
