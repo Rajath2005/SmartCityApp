@@ -805,8 +805,8 @@ public class SmartCityApp {
                         System.out.println("╔══════════════════════════╗");
                         System.out.println("║      👤 MY PROFILE       ║");
                         System.out.println("╠══════════════════════════╣");
-                        System.out.printf("║  Username : %-12s ║%n", dbUsername);
-                        System.out.printf("║  Role     : %-12s ║%n", role);
+                        System.out.printf("║  Username : %-12s ║%n", truncate(dbUsername, 12));
+                        System.out.printf("║  Role     : %-12s ║%n", truncate(role, 12));
                         System.out.println("╚══════════════════════════╝");
                     }
                 }
@@ -815,6 +815,13 @@ public class SmartCityApp {
             System.out.println("❌ Error: Failed to load user profile.");
             System.out.println("   Error message: " + e.getMessage());
         }
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength - 3) + "...";
     }
 
     /**
