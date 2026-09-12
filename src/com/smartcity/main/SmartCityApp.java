@@ -15,10 +15,9 @@ import java.util.Scanner;
 import com.smartcity.db.DBConnection;
 import com.smartcity.model.Place;
 import com.smartcity.service.EmailService;
-import com.smartcity.structures.RecentlyViewedManager;
-import java.util.List;
-import com.smartcity.util.ValidationUtils;
 import com.smartcity.structures.Comparators;
+import com.smartcity.structures.RecentlyViewedManager;
+import com.smartcity.util.ValidationUtils;
 
 /**
  * The main entry point for the Smart City Guide application.
