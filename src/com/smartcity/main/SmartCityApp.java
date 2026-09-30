@@ -15,6 +15,8 @@ import java.util.SplittableRandom;
 
 import com.smartcity.db.DBConnection;
 import com.smartcity.model.Place;
+import com.smartcity.service.CacheStats;
+import com.smartcity.service.CachedDBConnection;
 import com.smartcity.service.EmailService;
 import com.smartcity.structures.RecentlyViewedManager;
 import com.smartcity.util.ValidationUtils;
@@ -38,10 +40,18 @@ public class SmartCityApp {
     // Recently Viewed Places Manager
     private static final RecentlyViewedManager recentlyViewedManager = new RecentlyViewedManager();
 
+    // Cache-aside layer in front of the database, shared by every place lookup
+    private static final CachedDBConnection cachedDbConnection = new CachedDBConnection();
+
     // SQL Query Constants
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
     private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
-    private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ?";
+    private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ? AND is_active = TRUE";
+    // Only consulted after a failed login, to tell a deactivated account apart from a wrong password
+    private static final String DEACTIVATED_ACCOUNT_QUERY = "SELECT id FROM users WHERE username = ? AND password = ? AND is_active = FALSE";
+    private static final String SELECT_ACTIVE_NON_ADMIN_USERS_QUERY =
+            "SELECT username FROM users WHERE role != 'ADMIN' AND is_active = TRUE ORDER BY username ASC";
+    private static final String DEACTIVATE_USER_QUERY = "UPDATE users SET is_active = FALSE WHERE username = ? AND role != 'ADMIN'";
     private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
     private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
     private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -648,6 +658,10 @@ public class SmartCityApp {
                             showPlaceOfTheDay(connection);
                             showUserMenu(username);
                         }
+                    } else if (isDeactivatedAccount(connection, username, hashPassword(password))) {
+                        // The credentials were right, so say why they were refused
+                        // rather than sending the user off to reset a working password.
+                        System.out.println("❌ This account has been deactivated. Please contact an administrator.");
                     } else {
                         System.out.println("❌ Error: Username or password incorrect. Please try again.");
                     }
@@ -657,6 +671,29 @@ public class SmartCityApp {
         } catch (SQLException e) {
             System.out.println("❌ Error: Failed to login user.");
             System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Checks whether a failed login was refused because the account is
+     * deactivated rather than because the credentials were wrong. Runs only
+     * after the login query has already come back empty.
+     *
+     * @param connection     an open database connection
+     * @param username       the username that was entered
+     * @param hashedPassword the hash of the password that was entered
+     * @return true if these credentials match an account that has been
+     *         deactivated
+     * @throws SQLException if the lookup fails
+     */
+    private static boolean isDeactivatedAccount(Connection connection, String username, String hashedPassword)
+            throws SQLException {
+        try (PreparedStatement pstmt = connection.prepareStatement(DEACTIVATED_ACCOUNT_QUERY)) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, hashedPassword);
+            try (ResultSet resultSet = pstmt.executeQuery()) {
+                return resultSet.next();
+            }
         }
     }
 
@@ -895,7 +932,9 @@ public class SmartCityApp {
             System.out.println("1. 👥 View all users");
             System.out.println("2. 🏗️ Manage city resources");
             System.out.println("3. 📋 View system logs");
-            System.out.println("4. 🚪 Logout");
+            System.out.println("4. ⚡ Cache statistics");
+            System.out.println("5. 🚫 Deactivate a user account");
+            System.out.println("6. 🚪 Logout");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -913,13 +952,196 @@ public class SmartCityApp {
                     System.out.println("Displaying system logs...");
                     break;
                 case 4:
+                    // Inspect (and optionally flush) the in-memory cache
+                    showCacheStats();
+                    break;
+                case 5:
+                    // Soft-delete: keep the account and its history, but block logins
+                    deactivateUser();
+                    break;
+                case 6:
                     System.out.println("Logging out from admin account. Goodbye!");
                     inAdminMenu = false;
                     break;
                 default:
-                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 4.");
+                    System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 6.");
             }
         }
+    }
+
+    /**
+     * Deactivates a user account: a soft delete that leaves the row, and
+     * everything attached to it, in place while refusing the account at login.
+     * <p>
+     * Administrators are never listed and never updated — the {@code role !=
+     * 'ADMIN'} guard is repeated in the UPDATE itself, so an admin account
+     * cannot be disabled even if the listing and the update disagree about who
+     * is an admin. The change is confirmed before it is applied.
+     */
+    private static void deactivateUser() {
+        System.out.println("\n--- Deactivate a User Account ---");
+
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            List<String> activeUsers = findActiveNonAdminUsernames(connection);
+
+            if (activeUsers.isEmpty()) {
+                System.out.println("ℹ️  There are no active user accounts to deactivate.");
+                pauseUntilEnter();
+                return;
+            }
+
+            System.out.println("\n👥 Active user accounts:");
+            for (String activeUser : activeUsers) {
+                System.out.println("   • " + activeUser);
+            }
+            System.out.println("-".repeat(50));
+
+            System.out.print("Enter username to deactivate: ");
+            String entered = scanner.nextLine().trim();
+
+            if (entered.isEmpty()) {
+                System.out.println("❌ Error: Username cannot be empty. Nothing was changed.");
+                pauseUntilEnter();
+                return;
+            }
+
+            // Resolve what was typed against the list, so the message is accurate
+            // and the UPDATE runs against the username exactly as it is stored.
+            String username = matchIgnoringCase(activeUsers, entered);
+
+            if (username == null) {
+                System.out.println("❌ Error: No active, non-admin account named '" + entered + "' was found.");
+                System.out.println("   Administrators cannot be deactivated, and an account can only be deactivated once.");
+                pauseUntilEnter();
+                return;
+            }
+
+            System.out.print("Are you sure? This will prevent them from logging in. (yes/no): ");
+            String confirmation = scanner.nextLine().trim();
+
+            if (!confirmation.equalsIgnoreCase("yes")) {
+                System.out.println("↩️  Cancelled. '" + username + "' is still active.");
+                pauseUntilEnter();
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(DEACTIVATE_USER_QUERY)) {
+                pstmt.setString(1, username);
+
+                int rowsAffected = pstmt.executeUpdate();
+
+                if (rowsAffected > 0) {
+                    System.out.println("✅ User '" + username + "' has been deactivated.");
+                } else {
+                    System.out.println("❌ Error: '" + username + "' could not be deactivated.");
+                    System.out.println("   The account may have been removed or promoted to administrator.");
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to deactivate the user account.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+
+        pauseUntilEnter();
+    }
+
+    /**
+     * Reads the usernames of every account that can still be deactivated:
+     * active, and not an administrator.
+     *
+     * @param connection an open database connection
+     * @return the matching usernames in alphabetical order, empty if there are none
+     * @throws SQLException if the query fails
+     */
+    private static List<String> findActiveNonAdminUsernames(Connection connection) throws SQLException {
+        List<String> usernames = new ArrayList<>();
+
+        try (PreparedStatement pstmt = connection.prepareStatement(SELECT_ACTIVE_NON_ADMIN_USERS_QUERY);
+             ResultSet resultSet = pstmt.executeQuery()) {
+
+            while (resultSet.next()) {
+                usernames.add(resultSet.getString("username"));
+            }
+        }
+
+        return usernames;
+    }
+
+    /**
+     * Finds the entry of a list that equals the given text ignoring case.
+     * Used so an admin who types "John" can act on the account stored as
+     * "john", while the stored spelling is what gets used from then on.
+     *
+     * @param candidates the values to search
+     * @param text       the text that was typed
+     * @return the matching entry as stored, or null if nothing matched
+     */
+    private static String matchIgnoringCase(List<String> candidates, String text) {
+        for (String candidate : candidates) {
+            if (candidate.equalsIgnoreCase(text)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Holds the screen until the user presses Enter. The admin menu clears the
+     * terminal as soon as it is redrawn, so without this the outcome of an
+     * action would flash past unread.
+     */
+    private static void pauseUntilEnter() {
+        System.out.print("\nPress Enter to return to the menu... ");
+        scanner.nextLine();
+    }
+
+    /**
+     * Prints how the in-memory cache layer has been performing this session —
+     * hits, misses, hit rate, expiries, invalidations, and how much is
+     * currently held — then offers to flush it.
+     * <p>
+     * The numbers are the ones an admin needs to answer "is the cache actually
+     * saving us queries?": a hit rate climbing towards 100% means repeat views
+     * are being served from memory, while a run of misses means entries are
+     * expiring (or being invalidated) faster than they are being reused.
+     */
+    private static void showCacheStats() {
+        CacheStats stats = cachedDbConnection.getCacheStats();
+
+        System.out.println();
+        System.out.println("╔" + "═".repeat(STATS_BOX_WIDTH) + "╗");
+        System.out.println(centeredStatsRow("⚡  CACHE PERFORMANCE"));
+        System.out.println("╠" + "═".repeat(STATS_BOX_WIDTH) + "╣");
+        System.out.println(statsRow("✅", "Cache hits", String.valueOf(stats.getHits())));
+        System.out.println(statsRow("❌", "Cache misses", String.valueOf(stats.getMisses())));
+        System.out.println(statsRow("🎯", "Hit rate", String.format("%.1f%%", stats.getHitRatio() * 100)));
+        System.out.println(statsRow("🔢", "Total lookups", String.valueOf(stats.getTotalLookups())));
+        System.out.println("╟" + "─".repeat(STATS_BOX_WIDTH) + "╢");
+        System.out.println(statsRow("⏳", "Expired entries", String.valueOf(stats.getExpirations())));
+        System.out.println(statsRow("🧹", "Invalidations", String.valueOf(stats.getInvalidations())));
+        System.out.println("╟" + "─".repeat(STATS_BOX_WIDTH) + "╢");
+        System.out.println(statsRow("🏙️", "Places cached", String.valueOf(stats.getPlaceEntries())));
+        System.out.println(statsRow("👥", "Users cached", String.valueOf(stats.getUserEntries())));
+        System.out.println(statsRow("⌛", "Entry TTL", (cachedDbConnection.getTtlMillis() / 1000) + " s"));
+        System.out.println("╚" + "═".repeat(STATS_BOX_WIDTH) + "╝");
+
+        if (stats.getTotalLookups() == 0) {
+            System.out.println("\nℹ️  No lookups yet — view a place twice to see a miss followed by a hit.");
+        }
+
+        System.out.print("\nClear the cache now? (y/N): ");
+        String answer = scanner.nextLine();
+        if (answer != null && answer.trim().equalsIgnoreCase("y")) {
+            cachedDbConnection.clearCache();
+            System.out.println("🧹 Cache cleared. The next read of every place will go to the database.");
+        }
+
+        pauseUntilEnter();
     }
 
     /**
@@ -984,8 +1206,13 @@ public class SmartCityApp {
     }
 
     /**
-     * Prompts the user for a place ID, fetches its details from the database,
-     * prints them, and records the view in the RecentlyViewedManager.
+     * Prompts the user for a place ID, fetches its details through the cache
+     * layer, prints them along with where the data came from and how long the
+     * lookup took, and records the view in the RecentlyViewedManager.
+     * <p>
+     * Looking the same place up twice in a row is the clearest demonstration of
+     * the cache-aside pattern: the first read pays for a database round trip,
+     * every read after it is answered from memory until the TTL elapses.
      */
     private static void viewPlaceDetails() {
         System.out.print("\nEnter place ID to view details: ");
@@ -999,39 +1226,57 @@ public class SmartCityApp {
             return;
         }
 
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
+        // Asked before the lookup, since the lookup itself populates the cache.
+        boolean servedFromCache = cachedDbConnection.isPlaceCached(placeId);
 
-            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
-                pstmt.setInt(1, placeId);
-                try (ResultSet rs = pstmt.executeQuery()) {
-                    if (rs.next()) {
-                        System.out.println("\n📖 ===== PLACE DETAILS =====");
-                        System.out.println("📍 Place ID: " + rs.getInt("id"));
-                        System.out.println("   Name: " + rs.getString("name"));
-                        System.out.println("   Category: " + rs.getString("category"));
-                        System.out.println("   Location: " + rs.getString("location"));
-                        System.out.println("   Description: " + rs.getString("description"));
-                        System.out.println("   Coordinates: " + rs.getDouble("latitude") + ", " + rs.getDouble("longitude"));
-                        System.out.println("-".repeat(50));
-                        
-                        // Record view
-                        recentlyViewedManager.viewPlace(placeId);
-                    } else {
-                        System.out.println("❌ Error: Place with ID " + placeId + " not found.");
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to fetch place details.");
-            System.out.println("   Error message: " + e.getMessage());
+        long startNanos = System.nanoTime();
+        Place place = cachedDbConnection.getPlace(placeId);
+        double elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000.0;
+
+        if (place == null) {
+            // A miss that returns nothing means either no such row or an
+            // unreachable database, so the message covers both.
+            System.out.println("❌ Error: Place with ID " + placeId + " could not be loaded.");
+            System.out.println("   It may not exist, or the database may be unavailable.");
+            return;
         }
+
+        System.out.println("\n📖 ===== PLACE DETAILS =====");
+        System.out.println("📍 Place ID: " + place.getId());
+        System.out.println("   Name: " + place.getName());
+        System.out.println("   Category: " + place.getCategory());
+        System.out.println("   Location: " + place.getLocation());
+        System.out.println("   Description: " + place.getDescription());
+        System.out.println("   Coordinates: " + place.getLatitude() + ", " + place.getLongitude());
+        System.out.println(cacheSourceLine(servedFromCache, elapsedMillis));
+        System.out.println("   " + cachedDbConnection.getCacheStats());
+        System.out.println("-".repeat(50));
+
+        // Record view
+        recentlyViewedManager.viewPlace(placeId);
+    }
+
+    /**
+     * Builds the one-line note that tells the user whether a lookup was served
+     * from the in-memory cache or from the database, and how long it took.
+     *
+     * @param servedFromCache true if the value was already cached when the
+     *                        lookup started
+     * @param elapsedMillis   how long the lookup took, in milliseconds
+     * @return a formatted line ready to print
+     */
+    private static String cacheSourceLine(boolean servedFromCache, double elapsedMillis) {
+        String source = servedFromCache
+                ? "⚡ Cache HIT  — served from memory"
+                : "🐢 Cache MISS — read from the database";
+        return String.format("   %s in %.3f ms", source, elapsedMillis);
     }
 
     /**
      * Fetches the recently viewed places from the manager and displays them.
+     * <p>
+     * Every place in this list has just been viewed, so the lookups go through
+     * the cache and are normally answered from memory without a single query.
      */
     private static void viewRecentlyViewedPlaces() {
         List<Integer> recentIds = recentlyViewedManager.getRecent();
@@ -1043,28 +1288,21 @@ public class SmartCityApp {
         System.out.println("\n🕒 ===== RECENTLY VIEWED PLACES =====");
         System.out.println("-".repeat(50));
 
-        try (Connection connection = getConnectionOrPrintError()) {
-            if (connection == null) {
-                return;
-            }
+        CacheStats before = cachedDbConnection.getCacheStats();
 
-            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACE_BY_ID_QUERY)) {
-                for (int id : recentIds) {
-                    pstmt.setInt(1, id);
-                    try (ResultSet rs = pstmt.executeQuery()) {
-                        if (rs.next()) {
-                            System.out.println("📍 Place ID: " + rs.getInt("id"));
-                            System.out.println("   Name: " + rs.getString("name"));
-                            System.out.println("   Category: " + rs.getString("category"));
-                            System.out.println("");
-                        }
-                    }
-                }
+        for (int id : recentIds) {
+            Place place = cachedDbConnection.getPlace(id);
+            if (place != null) {
+                System.out.println("📍 Place ID: " + place.getId());
+                System.out.println("   Name: " + place.getName());
+                System.out.println("   Category: " + place.getCategory());
+                System.out.println("");
             }
-        } catch (SQLException e) {
-            System.out.println("❌ Error: Failed to fetch recently viewed places.");
-            System.out.println("   Error message: " + e.getMessage());
         }
+
+        CacheStats after = cachedDbConnection.getCacheStats();
+        System.out.println("⚡ " + (after.getHits() - before.getHits()) + " of " + recentIds.size()
+                + " lookups served from cache.");
         System.out.println("-".repeat(50));
     }
 
@@ -1400,6 +1638,9 @@ public class SmartCityApp {
                 int rowsAffected = pstmt.executeUpdate();
 
                 if (rowsAffected > 0) {
+                    // An earlier failed lookup may have left nothing cached, but drop
+                    // the key anyway so the new row can never be shadowed.
+                    cachedDbConnection.invalidatePlace(id);
                     System.out.println("✅ Success! Place '" + name + "' has been added to the city.");
                 } else {
                     System.out.println("❌ Error: Failed to add place. Please try again.");
@@ -1552,6 +1793,8 @@ public class SmartCityApp {
                 int rows = updatePstmt.executeUpdate();
 
                 if (rows > 0) {
+                    // The cached copy is now stale — evict it so the next read reloads.
+                    cachedDbConnection.invalidatePlace(placeId);
                     System.out.println("✅ Success! Place updated successfully.");
                 } else {
                     System.out.println("❌ Error: Update failed.");
@@ -1594,6 +1837,8 @@ public class SmartCityApp {
                 int rowsAffected = pstmt.executeUpdate();
 
                 if (rowsAffected > 0) {
+                    // The row is gone; the cached copy must go with it.
+                    cachedDbConnection.invalidatePlace(placeId);
                     System.out.println("✅ Success! Place with ID " + placeId + " has been deleted.");
                 } else {
                     System.out.println("❌ Error: Place with ID " + placeId + " not found.");

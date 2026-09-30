@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     role VARCHAR(20) DEFAULT 'USER'
 );
+-- Add soft-delete support. A deactivated account keeps its row (and its
+-- history) but is refused at login until an administrator restores it.
+ALTER TABLE users
+    ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
 
 -- Table for Places
 CREATE TABLE IF NOT EXISTS places (
