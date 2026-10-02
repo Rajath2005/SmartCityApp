@@ -52,6 +52,7 @@ public class SmartCityApp {
     private static final String COUNT_PLACES_QUERY = "SELECT COUNT(*) FROM places";
     // Ordering by id makes the offset stable, so the same day always lands on the same place
     private static final String SELECT_PLACE_AT_OFFSET_QUERY = "SELECT * FROM places ORDER BY id LIMIT 1 OFFSET ?";
+    private static final String SELECT_PLACES_PAGE_QUERY = "SELECT * FROM places ORDER BY name ASC LIMIT ? OFFSET ?";
     private static final String COUNT_USERS_QUERY = "SELECT COUNT(*) FROM users";
     private static final String COUNT_PLACES_BY_CATEGORY_QUERY =
             "SELECT category, COUNT(*) AS cnt FROM places GROUP BY category ORDER BY cnt DESC, category ASC";
@@ -61,6 +62,9 @@ public class SmartCityApp {
     private static final String UPDATE_PASSWORD_QUERY = "UPDATE users SET password = ? WHERE id = ?";
 
     private static final String SHA256_HEX_PATTERN = "^[a-f0-9]{64}$";
+
+    // Number of places shown per page in "View All Places"
+    private static final int PAGE_SIZE = 5;
 
     // Layout of the City Stats box, measured in terminal columns
     private static final int STATS_BOX_WIDTH = 44;
@@ -1110,24 +1114,62 @@ public class SmartCityApp {
     }
 
     /**
-     * Queries the database for all places, ordered alphabetically by name,
-     * and prints them to standard output.
+     * Shows all places ordered alphabetically by name, {@link #PAGE_SIZE} at a
+     * time, letting the user move between pages until they quit.
      */
     private static void viewAllPlaces() {
-        String query = "SELECT * FROM places ORDER BY name ASC";
-
         try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
             }
 
-            try (PreparedStatement pstmt = connection.prepareStatement(query);
-                 ResultSet resultSet = pstmt.executeQuery()) {
+            int totalPlaces = countRows(connection, COUNT_PLACES_QUERY);
+            if (totalPlaces == 0) {
+                System.out.println("❌ No places available at the moment.");
+                return;
+            }
 
-                // Display header
-                System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS =====");
+            int totalPages = (totalPlaces + PAGE_SIZE - 1) / PAGE_SIZE;
+            int page = 0;
+
+            while (true) {
+                System.out.println("\n🏙️  ===== ALL CITY ATTRACTIONS (Page " + (page + 1) + " of " + totalPages + ") =====");
                 System.out.println("-".repeat(50));
-                placeResultPrintout(resultSet);
+
+                try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACES_PAGE_QUERY)) {
+                    pstmt.setInt(1, PAGE_SIZE);
+                    pstmt.setInt(2, page * PAGE_SIZE);
+                    try (ResultSet resultSet = pstmt.executeQuery()) {
+                        placeResultPrintout(resultSet);
+                    }
+                }
+
+                boolean isLastPage = page == totalPages - 1;
+                if (isLastPage) {
+                    System.out.println("🏁 End of results.");
+                }
+
+                System.out.print("[N]ext / [B]ack / [Q]uit: ");
+                switch (scanner.nextLine().trim().toUpperCase()) {
+                    case "N":
+                        if (isLastPage) {
+                            System.out.println("❌ You are already on the last page.");
+                        } else {
+                            page++;
+                        }
+                        break;
+                    case "B":
+                        if (page == 0) {
+                            System.out.println("❌ You are already on the first page.");
+                        } else {
+                            page--;
+                        }
+                        break;
+                    case "Q":
+                        return;
+                    default:
+                        System.out.println("❌ Invalid choice. Please enter N, B or Q.");
+                }
             }
 
         } catch (SQLException e) {
