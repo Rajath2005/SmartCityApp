@@ -42,6 +42,7 @@ public class SmartCityApp {
     private static final String CHECK_USERNAME_EXISTS_QUERY = "SELECT id FROM users WHERE username = ?";
     private static final String INSERT_USER_QUERY = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)";
     private static final String LOGIN_QUERY = "SELECT role FROM users WHERE username = ? AND password = ?";
+    private static final String UPDATE_LAST_LOGIN_QUERY = "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE username = ?";
     private static final String SEARCH_BY_CATEGORY_QUERY = "SELECT * FROM places WHERE LOWER(category) LIKE LOWER(?)";
     private static final String SEARCH_BY_LOCATION_QUERY = "SELECT * FROM places WHERE LOWER(location) LIKE LOWER(?)";
     private static final String INSERT_PLACE_QUERY = "INSERT INTO places (id, name, category, location, description, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -128,7 +129,7 @@ public class SmartCityApp {
             System.out.println("❌ Could not connect to the database.");
             System.out.println("   Please check:");
             System.out.println("   1. Is MySQL running on your machine?");
-            System.out.println("   2. Did you run db_setup.sql to create the database?");
+            System.out.println("   2. Did you run db/schema.sql to create the database?");
             System.out.println("   3. Is your password correct?");
         }
         return conn;
@@ -637,6 +638,11 @@ public class SmartCityApp {
                     if (resultSet.next()) {
                         // Get user role from database
                         String role = resultSet.getString("role");
+
+                        try (PreparedStatement updatePstmt = connection.prepareStatement(UPDATE_LAST_LOGIN_QUERY)) {
+                            updatePstmt.setString(1, username);
+                            updatePstmt.executeUpdate();
+                        }
 
                         System.out.println("✅ Success! Welcome back, " + username + "!");
 

@@ -121,7 +121,7 @@ Before running the application, you must initialize the MySQL database:
 1. Open your terminal or MySQL client.
 2. Run the provided SQL setup script:
    ```bash
-   mysql -u root -p < db_setup.sql
+   mysql -u root -p < db/schema.sql
    ```
 3. This will create the `smart_city_guide` database, the `users` table, and the `places` table, and it will insert a default admin user.
 
