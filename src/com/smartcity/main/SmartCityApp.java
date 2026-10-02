@@ -128,7 +128,7 @@ public class SmartCityApp {
             System.out.println("❌ Could not connect to the database.");
             System.out.println("   Please check:");
             System.out.println("   1. Is MySQL running on your machine?");
-            System.out.println("   2. Did you run db_setup.sql to create the database?");
+            System.out.println("   2. Did you run db/schema.sql to create the database?");
             System.out.println("   3. Is your password correct?");
         }
         return conn;

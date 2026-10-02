@@ -73,7 +73,7 @@ if ! "$MYSQLADMIN" --socket="$MYSQL_SOCKET" ping --silent 2>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
-# Bootstrap database schema (idempotent via db_setup.sql)
+# Bootstrap database schema (idempotent via db/schema.sql)
 # Sets root password on very first run; subsequent runs use the stored password.
 # ---------------------------------------------------------------------------
 run_sql() {
@@ -89,11 +89,11 @@ if "$MYSQL_CMD" --socket="$MYSQL_SOCKET" -u root --password="" \
     --connect-expired-password \
     -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';" 2>/dev/null || true
   "$MYSQL_CMD" --socket="$MYSQL_SOCKET" -u root --password="$DB_PASSWORD" \
-    --connect-expired-password < db_setup.sql 2>/dev/null || true
+    --connect-expired-password < db/schema.sql 2>/dev/null || true
   echo "✅ Schema loaded."
 elif run_sql -e "SELECT 1;" >/dev/null 2>&1; then
-  # Already bootstrapped; ensure schema exists (safe because db_setup.sql uses IF NOT EXISTS)
-  run_sql < db_setup.sql 2>/dev/null || true
+  # Already bootstrapped; ensure schema exists (safe because db/schema.sql uses IF NOT EXISTS)
+  run_sql < db/schema.sql 2>/dev/null || true
 else
   echo "❌ Cannot connect to MySQL. Check DB_PASSWORD or $MYSQL_LOG."
   exit 1

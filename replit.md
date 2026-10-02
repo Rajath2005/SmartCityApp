@@ -47,7 +47,7 @@ web/
 
 ## Java CLI app (original project)
 
-The original Java CLI application lives in `src/` and `db_setup.sql`. To run it:
+The original Java CLI application lives in `src/` and `db/schema.sql`. To run it:
 
 ```bash
 bash start.sh

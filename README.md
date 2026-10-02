@@ -55,13 +55,21 @@ The application follows a **3-layer structure**, with each layer responsible for
 > [!NOTE]
 > This application requires a local or containerized **MySQL Database** for persistent storage.
 
+### Database Setup
+
+[`db/schema.sql`](db/schema.sql) creates the `smart_city_guide` database with the `users` and `places` tables, a sample admin account (`admin` / `Admin@123`) and a few sample places. It is safe to run more than once.
+
+```bash
+mysql -u root -p < db/schema.sql
+```
+
 ### Local Setup
 
 Ensure you have **Java JDK 8+** and **MySQL Server** installed. You will also need the `mysql-connector-java.jar` in your classpath.
 
 1. **Initialize the Database:**
    ```bash
-   mysql -u root -p < db_setup.sql
+   mysql -u root -p < db/schema.sql
    ```
    *Note: If upgrading an existing database without the `email` column, run the migration script:*
    ```bash
@@ -108,7 +116,7 @@ SmartCityGuide/
 │   ├── model/              # Data models (POJOs)
 │   └── db/                 # JDBC Connection Managers
 ├── web/                    # Frontend contributor portal
-├── db_setup.sql            # Database schema and seed data
+├── db/schema.sql           # Database schema and sample data
 └── docker-compose.yml      # Container orchestration
 ```
 
@@ -136,7 +144,7 @@ Your MySQL password in the app doesn't match your actual MySQL password. Make su
 **Q: `smart_city_guide` database doesn't exist. What do I do?**
 
 You need to run the setup script first:
-mysql -u root -p < db_setup.sql
+mysql -u root -p < db/schema.sql
 
 **Q: I ran the app but nothing happens / it hangs after asking for a password.**
 

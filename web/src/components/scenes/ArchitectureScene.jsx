@@ -33,7 +33,7 @@ const NODE_DETAILS = {
   db:      { title: 'DBConnection.java', desc: 'A singleton JDBC connection manager. Reads DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD from environment variables — zero hardcoded credentials.', tags: ['Singleton', 'JDBC', 'ENV vars'] },
   place:   { title: 'Place.java',        desc: 'Simple POJO representing a city attraction: id, name, category, location, description, latitude, longitude.', tags: ['POJO', 'Model'] },
   usermdl: { title: 'User.java',         desc: 'POJO for user accounts with username, SHA-256 hashed password, and role (USER or ADMIN).', tags: ['POJO', 'RBAC'] },
-  mysql:   { title: 'MySQL 8.4',         desc: 'Local MySQL server. The users and places tables are created by db_setup.sql on first run via start.sh.', tags: ['MySQL 8.4', 'SQL', 'InnoDB'] },
+  mysql:   { title: 'MySQL 8.4',         desc: 'Local MySQL server. The users and places tables are created by db/schema.sql on first run via start.sh.', tags: ['MySQL 8.4', 'SQL', 'InnoDB'] },
   parser:  { title: 'event_parser.py',   desc: 'Converts raw GitHub webhook payloads into typed GitHubEvent dataclasses. The only layer that knows GitHub JSON shape.', tags: ['Python', 'Dataclasses', 'Webhooks'] },
   rules:   { title: 'rule_engine.py',    desc: 'Deterministic rule checks: merge conflicts, linked issues, TODO/FIXME, hardcoded secrets. Runs before AI to keep inference costs low.', tags: ['Rules', 'Deterministic', 'Pre-AI'] },
   ai:      { title: 'hf_client.py',      desc: 'Abstract BaseAIClient + HuggingFaceClient. Sends plain prompt strings, returns plain text. Zero knowledge of GitHub — keeps layers decoupled.', tags: ['DeepSeek V3', 'HuggingFace', 'Abstract'] },
