@@ -53,6 +53,7 @@ public class SmartCityApp {
     // Ordering by id makes the offset stable, so the same day always lands on the same place
     private static final String SELECT_PLACE_AT_OFFSET_QUERY = "SELECT * FROM places ORDER BY id LIMIT 1 OFFSET ?";
     private static final String SELECT_PLACES_PAGE_QUERY = "SELECT * FROM places ORDER BY name ASC LIMIT ? OFFSET ?";
+    private static final String SELECT_PLACES_BY_CATEGORY_QUERY = "SELECT * FROM places ORDER BY category ASC, name ASC";
     private static final String COUNT_USERS_QUERY = "SELECT COUNT(*) FROM users";
     private static final String COUNT_PLACES_BY_CATEGORY_QUERY =
             "SELECT category, COUNT(*) AS cnt FROM places GROUP BY category ORDER BY cnt DESC, category ASC";
@@ -1114,10 +1115,79 @@ public class SmartCityApp {
     }
 
     /**
+     * Asks the user how they would like to view the places (all A-Z or
+     * grouped by category) and shows them that way.
+     */
+    private static void viewAllPlaces() {
+        while (true) {
+            System.out.println("\nHow would you like to view?");
+            System.out.println("1. 🔤 View all (A-Z)");
+            System.out.println("2. 🏷️ View by category");
+            System.out.print("Enter your choice: ");
+
+            switch (scanner.nextLine().trim()) {
+                case "1":
+                    viewAllPlacesPaginated();
+                    return;
+                case "2":
+                    viewPlacesByCategory();
+                    return;
+                default:
+                    System.out.println("❌ Invalid choice. Please enter 1 or 2.");
+            }
+        }
+    }
+
+    /**
+     * Shows all places sorted by category and then by name, printing the
+     * category as a header each time it changes.
+     */
+    private static void viewPlacesByCategory() {
+        try (Connection connection = getConnectionOrPrintError()) {
+            if (connection == null) {
+                return;
+            }
+
+            try (PreparedStatement pstmt = connection.prepareStatement(SELECT_PLACES_BY_CATEGORY_QUERY);
+                 ResultSet resultSet = pstmt.executeQuery()) {
+
+                String currentCategory = null;
+
+                while (resultSet.next()) {
+                    String category = resultSet.getString("category");
+
+                    // MySQL sorts categories case-insensitively, so "park" and "Park" form one group
+                    if (currentCategory == null || !currentCategory.equalsIgnoreCase(category)) {
+                        currentCategory = category;
+                        System.out.println("\n" + categoryIcon(category) + " " + category.toUpperCase());
+                        System.out.println("-----------");
+                    }
+
+                    System.out.println("📍 " + resultSet.getString("name"));
+                    System.out.println("   Location: " + resultSet.getString("location"));
+                    System.out.println("   Description: " + resultSet.getString("description"));
+                }
+
+                if (currentCategory == null) {
+                    System.out.println("❌ No places available at the moment.");
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("❌ Error: Failed to fetch places from database.");
+            System.out.println("   Error message: " + e.getMessage());
+        }
+
+        // The user menu clears the screen when it is redrawn, so wait for the user first
+        System.out.print("\nPress Enter to return to the menu... ");
+        scanner.nextLine();
+    }
+
+    /**
      * Shows all places ordered alphabetically by name, {@link #PAGE_SIZE} at a
      * time, letting the user move between pages until they quit.
      */
-    private static void viewAllPlaces() {
+    private static void viewAllPlacesPaginated() {
         try (Connection connection = getConnectionOrPrintError()) {
             if (connection == null) {
                 return;
