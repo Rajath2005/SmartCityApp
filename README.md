@@ -9,6 +9,18 @@ The application follows a **3-layer structure**, with each layer responsible for
 
 1. **👤 User Input (CLI)** — The user interacts with the application through the command-line interface by selecting menu options and providing input.
 
+[![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com/)
+[![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![CLI](https://img.shields.io/badge/Interface-CLI-blue?style=for-the-badge&logo=windowsterminal&logoColor=white)]()
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge&logo=github)](https://github.com/Rajath2005/SmartCityApp/pulls)
+[![Contributors](https://img.shields.io/github/contributors/Rajath2005/SmartCityApp?style=for-the-badge&color=orange)](https://github.com/Rajath2005/SmartCityApp/graphs/contributors)
+[![Stars](https://img.shields.io/github/stars/Rajath2005/SmartCityApp?style=for-the-badge&color=yellow)](https://github.com/Rajath2005/SmartCityApp/stargazers)
+[![Forks](https://img.shields.io/github/forks/Rajath2005/SmartCityApp?style=for-the-badge&color=blue)](https://github.com/Rajath2005/SmartCityApp/network/members)
+[![Issues](https://img.shields.io/github/issues/Rajath2005/SmartCityApp?style=for-the-badge&color=red)](https://github.com/Rajath2005/SmartCityApp/issues)
+[![Open Source Helpers](https://www.codetriage.com/rajath2005/smartcityapp/badges/users.svg)](https://www.codetriage.com/rajath2005/smartcityapp)
+
+[![Java CI](https://github.com/Rajath2005/SmartCityApp/actions/workflows/ci.yaml/badge.svg)](https://github.com/Rajath2005/SmartCityApp/actions/workflows/ci.yaml)
 2. **🖥️ `SmartCityApp.java` — Controller Layer** — Handles application menus, reads user input, invokes the appropriate methods, and displays results to the user.
 
 3. **🔌 `DBConnection.java` — Data Layer** — Manages connections to the MySQL database using JDBC and handles database operations.

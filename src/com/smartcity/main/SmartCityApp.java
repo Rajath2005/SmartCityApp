@@ -1235,6 +1235,7 @@ public class SmartCityApp {
      * printing the matching results.
      */
     private static void searchByLocation() {
+        
         System.out.print("\nEnter location to search: ");
         String searchLocation = scanner.nextLine();
 
