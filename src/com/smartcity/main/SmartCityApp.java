@@ -1,6 +1,9 @@
 package com.smartcity.main;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,10 +15,12 @@ import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Scanner;
 import java.util.SplittableRandom;
+import java.util.stream.Stream;
 
 import com.smartcity.db.DBConnection;
 import com.smartcity.model.Place;
 import com.smartcity.service.EmailService;
+import com.smartcity.service.PlaceCsvImportService;
 import com.smartcity.structures.RecentlyViewedManager;
 import com.smartcity.util.ValidationUtils;
 
@@ -1271,9 +1276,10 @@ public class SmartCityApp {
         while (inResourceMenu) {
             System.out.println("\n===== Manage City Resources =====");
             System.out.println("1. ➕ Add new place");
-            System.out.println("2. ✏️ Update place");
-            System.out.println("3. 🗑️ Delete place");
-            System.out.println("4. ⬅️ Back");
+            System.out.println("2. 📥 Import Places from CSV");
+            System.out.println("3. ✏️ Update place");
+            System.out.println("4. 🗑️ Delete place");
+            System.out.println("5. ⬅️ Back");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -1285,14 +1291,18 @@ public class SmartCityApp {
                     addNewPlace();
                     break;
                 case 2:
+                    // Add a new place to the system
+                    importPlacesFromCSV();
+                    break;
+                case 3:
                     // Update an existing place
                     updatePlace();
                     break;
-                case 3:
+                case 4:
                     // Delete a place from the system
                     deletePlace();
                     break;
-                case 4:
+                case 5:
                     // Return to admin menu
                     inResourceMenu = false;
                     break;
@@ -1409,6 +1419,93 @@ public class SmartCityApp {
         } catch (SQLException e) {
             System.out.println("❌ Error: Failed to add new place to database.");
             System.out.println("   Error message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the admin for a CSV file path, reads and validates
+     * the place records, and imports valid places into the database.
+     */
+    private static void importPlacesFromCSV() {
+        Path directory = Path.of("imports");
+        System.out.println("\n--- Import Places from CSV ---");
+        System.out.println("1. 📄 Import places from a specific CSV file");
+        System.out.println("2. 📥 Import places from all CSV files");
+        System.out.println("3. ⬅️ Back");
+        System.out.println("Note: Place CSV files in the 'imports/' directory.");
+        System.out.print("Enter your choice: ");
+
+        int choice;
+        String filename = null;
+        try {
+            choice = scanner.nextInt();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid ID. Please enter a number.");
+            scanner.nextLine(); // Clear newline from input buffer
+            return;
+        }
+        switch (choice) {
+            case 1:
+            case 2:
+                break;
+            case 3:
+                return;
+            default:
+                System.out.println("❌ Invalid choice '" + choice + "'. Please enter a number between 1 and 3.");
+        }
+        if (!Files.isDirectory(directory)) {
+            System.out.println("❌ Directory not found: " + directory);
+            return;
+        }
+
+        try {
+            List<Path> files;
+            try (Stream<Path> paths = Files.list(directory)) {
+                files = paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().toLowerCase().endsWith(".csv"))
+                    .sorted()
+                    .toList();
+            }
+            if (files.isEmpty()) {
+                System.out.println("No CSV files found in 'imports/'.");
+                return;
+            }
+            if (choice == 1) {
+                for (int i = 0; i < files.size(); i++) {
+                    System.out.println((i + 1) + ". " + files.get(i).getFileName());
+                }
+                System.out.print("Select file number: ");
+                int selected;
+                try {
+                    selected = scanner.nextInt();
+                    scanner.nextLine();
+                } catch (InputMismatchException e) {
+                    System.out.println("❌ Invalid ID. Please enter a number.");
+                    scanner.nextLine();
+                    return;
+                }
+                files = List.of(files.get(selected - 1));
+            }
+
+            try (Connection connection = getConnectionOrPrintError()) {
+                if (connection == null) {
+                    return;
+                }
+                int total = 0;
+                for (Path file : files) {
+                    try {
+                        int count = PlaceCsvImportService.importFile(file, connection);
+                        total += count;
+                        System.out.println("✅ " + file.getFileName() + ": " + count + " places imported.");
+                    } catch (IOException | SQLException | IllegalArgumentException e) {
+                        System.out.println("❌ " + file.getFileName() + ": " + e.getMessage());
+                    }
+                }
+                System.out.println("Total imported places: " + total);
+            }
+        } catch (IOException | SQLException e) {
+            System.out.println("❌ CSV import failed: " + e.getMessage());
         }
     }
 
