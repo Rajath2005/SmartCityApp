@@ -27,6 +27,8 @@ services:
       DB_NAME: smart_city_guide
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-root}
+    volumes:
+        - ./imports:/app/imports
     stdin_open: true
     tty: true
 
